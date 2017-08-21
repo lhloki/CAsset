@@ -1,0 +1,9 @@
+<!--
+  %\VignetteEngine{knitr}
+  %\VignetteIndexEntry{Assets Return Analysis in China's Market}
+ --->
+
+# Assets Return Analysis in China's Market
+
+The goal of this work is to provide a guide on how to make use of the dataset provided in the this package to have a quick and deap understanding on the assets returns in China's market. The raw data are download through a python package tushare.
+

@@ -1,0 +1,308 @@
+---
+title: "分析丘栋荣-技术报告"
+author:
+  - 蓝海
+  - 彭莉
+documentclass: ctexart
+output:
+  rticles::ctex:
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+classoption: "hyperref,"
+---
+
+# 业绩表现
+
+丘栋荣共管理2个基金产品，其表现如下：
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+require(CAsset)
+require(PerformanceAnalytics)
+init()
+pdf.options(family = "GB1")
+funds=getFunds(codes=c('540006','000849'),fund.names=c('大盘','双核'),from='2009-01-01')
+data(asset_top_daily)
+hs300<-asset_top_daily[,'stock']
+colnames(hs300)<-'沪深300'
+funds = merge(funds,hs300,join='left')
+charts.PerformanceSummary(funds,event.labels=c('管理基金'),event.lines=c('2014-09-16'))
+
+knitr::kable(fund.performance(funds),digits=2,col.names=c('名称','近半年','夏普率','近一年','夏普率','近两年','夏普率','近三年','夏普率'))
+```
+
+# 风格分析
+
+## 交易风格
+基于公开信息，我们对丘栋荣的管理的汇丰晋信大盘基金的交易风格分析如下：
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+df=fund.style(code='540006',from='2014-09-16')
+df=df[,c(-1,-2)]
+
+ranks<-c(3,5,7,9,11,13,15)
+for(j in seq(1:nrow(df)))
+{
+  for(i in ranks)
+  {
+    df[j,i]=as.integer(as.numeric(df[j,i])*100)
+  }
+}
+knitr::kable(df[,seq(1,7)],digits=2,col.names=c('日期','换手率','排名%','持有期','排名%','前十占比%','排名%'))
+knitr::kable(df[,c(1,seq(8,15))],digits=2,col.names=c('日期','行业前5占比%','排名%','平均集中度','排名%','PE','排名%','PB','排名%'))
+```
+
+其中排名，从0到100%，是按照对应数值从高到低的顺序，在同期同类基金中做出的。比如持有期排名都小于20%，意味着其相对与一般基金持有股票的品均时间要长，长于80%的基金。同理，该基金的个股集中度以及行业集中度都要高于大多数的基金。从以上表格中可以看出 *汇丰晋信大盘基金，是以低换手率，长期地相对集中地投资于低PB和低PE的股票来获取收益的。因此该基金在市场风格相对单一、投资者风险偏好较低的时候具备良好的表现*。
+
+类似的，我们对丘栋荣管理的另外一只基金汇丰晋信双核策略基金进行分析。
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+df=fund.style(code='000849',from='2014-09-16')
+df=df[,c(-1,-2)]
+
+ranks<-c(3,5,7,9,11,13,15)
+for(j in seq(1:nrow(df)))
+{
+  for(i in ranks)
+  {
+    df[j,i]=as.integer(as.numeric(df[j,i])*100)
+  }
+}
+knitr::kable(df[,seq(1,7)],digits=2,col.names=c('日期','换手率','排名%','持有期','排名%','前十占比%','排名%'))
+knitr::kable(df[,c(1,seq(8,15))],digits=2,col.names=c('日期','行业前5占比%','排名%','平均集中度','排名%','PE','排名%','PB','排名%'))
+```
+
+不出意料的，该基金的交易风格任然是以低换手、长持有期、低PE以及低PB为显著特点。
+
+## 持仓风格
+
+基于净值数据，我们对丘在汇丰晋信大盘产品中的持仓风格分析如下。
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+model<-fund_holding_style('540006',from='2014-09-16',frequency='monthly',style=1,constraint=list(stock=c(0.85,0.95),bond=c(0,1),cash=0.05))
+params<-model$coefficients[model$coefficients>0.0001]
+facters<-model$factors[model$coefficients>0.0001]
+
+formula<-as.data.frame(matrix(params*100,1,length(params)))
+colnames(formula)<-facters
+knitr::kable(formula,digits=2,caption='持仓风格权重分析(%)')
+
+pie(params,facters)
+```
+
+从中可见，丘的持股风格偏向价值型股票，尤其以其投资期间估值偏低的大盘、中盘价值为主。成长型的股票，基本局限在估值尚且合理的大盘成长型股票。因此，*丘是一个十分重视估值合理性的价值投资者，相对的，他并不给予成长对应的估值溢价，倾向保守*。
+
+## 主动风格
+
+我们用行业累计偏离指数代表该基金主动管理的活跃度（在Kacperczyk等的研究中，这个指标又被成为行业集中度）。我们的逻辑根据建立在弱有效市场指数代表了整个市场的“简单”共识，大量的“smart beta”的机会留给了基金管理人，在追寻“smart beta”的过程中，突破原有的行业布局不可避免。而这种突破正可以被行业累计偏离指数来捕捉。但是，主动指数并非越大越好，毕竟市场是弱有效的，完全忽略市场的共识——哪怕是“简单”共识——也是唐吉坷德式的挑战风车。实际上有研究表明，基金业绩表现与Kacperczyk的行业集中度呈现负相关，即行业集中度越大，基金表现越差。我们的分析表明，这种联系在中国市场不是简单照搬的，对于极端的行业集中的情形，确实行业集中度越高，基金平均表现越差，但是在一个温和的区间中，这样的联系是不存在的。当然这个主动指数可以进一步的拓展到对包含基金经理追求alpha
+的描述，这是我们下一步的工作方向之一。
+
+以其管理的汇丰晋信大盘基金为说明，从创建到其接收管理之前，该基金的平均主动管理活跃度为36.7%，呈现非常激进的主动管理态势；其接管基金后平均主动管理活跃度为18.3%，表现为积极但是有限度的主动管理。在其管理的同期，整个基金行业的同类型基金的主动管理活跃指数为26.8%。因此，*对于丘栋荣的管理风格可以定义为稳健的主动管理型*。
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+df=sqldf("select year,quarter,sum(abs(diff_bogey))/2 as active from fund_industry_weight group by code,year,quarter having code='540006' order by year,quarter;")
+df_ave=sqldf("select ac.year, ac.quarter,avg(ac.active) as active from (select year,quarter,sum(abs(diff_bogey))/2 as active, type3 from fund_industry_weight group by code,year,quarter,type3 order by year,quarter) as ac group by ac.year,ac.quarter,ac.type3 having ac.type3 like '普通股票%' order by ac.year,ac.quarter;")
+```
+鉴于丘栋荣能够在相对稳健的资产管理中获得平均1.43的夏普率（即付出一个单位的风险获得1.43个单位的超额收益率），我们有必要对于他的资产管理能力做一次细致的分析。
+
+# 能力评价
+
+## 几乎无效的大类资产配置
+从下图可以看出，自从2014年9月接手以来，丘栋荣在产品汇丰晋信大盘中讲股票仓位控制在90%左右，而另外一个产品汇丰晋信双核策略股票仓位则在60%-90%之间大幅变换。
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+df=sqldf("select year,quarter,equity_weight from fund_allocation_details where code='540006' order by year,quarter")
+report_date<-sprintf("%d Q%d",df$year,df$quarter)
+plot(as.yearqtr(report_date),as.numeric(df[,3]),type='l',xlab='时间',ylab='股票仓位(%)',ylim=c(60,95))
+abline(v=as.yearqtr('2014 Q3'),col = "lightgray")
+df=sqldf("select year,quarter,equity_weight from fund_allocation_details where code='000849' order by year,quarter")
+report_date<-sprintf("%d Q%d",df$year,df$quarter)
+lines(as.yearqtr(report_date),as.numeric(df[,3]),type='l',col='red')
+```
+
+我们通过计算两支不同的基金的仓位调整的相关性来探究这两种看似不同的仓位调整中是否具备某种潜在的逻辑。如果基金经理对于大类资产的预期收益有明确的判断，在同样的投资节点上，在不同基金产品的仓位控制上应该具备较高的一致性——尽管由于不同基金条款的限制而不能采用相同的资产配置策略，但是它们的调整方向应该是一致的。以上两支基金中仓位控制方法的相关性为0.32。虽然也是正相关，代表这两只基金的仓位控制有着某种同方向上相关性——同时增加或者同时减少。但是0.32的正相关性毕竟是相对弱的，尤其考虑到这两支基金的规模相近，我们可以推断丘栋荣在这两只基金的仓位控制上恐怕没有一个“自上而下”的一致的思维视角，更多的当是“自下而上”的择股操作自然而然形成的仓位水平。
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=FALSE,fig.width=11}
+df=sqldf("select year,quarter,equity_weight from fund_allocation where code='540006' order by year,quarter")
+dapan<-(as.numeric(df$equity_weight)-85)/10
+
+df=sqldf("select year,quarter,equity_weight from fund_allocation where code='000849' order by year,quarter")
+shuanghe<-(as.numeric(df$equity_weight)-30)/65
+rho=cor(dapan[16:25],shuanghe[16:25])
+```
+
+进一步的计算大类资产配置带来的超额收益。
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=FALSE,fig.width=11}
+require(scales)
+asset_contribution=top_asset_contribution('540006','2014-09-18')
+
+return_compare<-data.frame(date=asset_contribution[,2],contribution=asset_contribution[,5]-asset_contribution[,6])
+
+knitr::kable(return_compare,digits=4,caption='汇丰晋信大盘A大类资产配置能力统计',col.names=c('日期','大类资产配置超额贡献(%)'))
+t=t.test(return_compare$contribution,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+```
+
+统计显示，在汇丰晋信大盘这支基金的管理上，虽然每季度平均取得 0.14% 的配置收益，但是统计意义上并不显著。因此丘栋荣并没有显示出大类资产配置的能力。
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=FALSE,fig.width=11}
+asset_contribution=top_asset_contribution('000849','2015-01-01')
+
+return_compare<-data.frame(date=asset_contribution[,2],contribution=asset_contribution[,5]-asset_contribution[,6])
+
+knitr::kable(return_compare,digits=4,caption='汇丰晋信双核策略大类资产配置能力统计',col.names=c('日期','大类资产配置超额贡献(%)'))
+t=t.test(return_compare$contribution,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+```
+
+如果说在大盘A上，丘没有展现出大类资产配置的能力是受制于其基金条约限制的话，那么在股票仓位可以在30%-95%区间变化，事实上投资实践中也出现了大幅度的仓位变化的双核策略上应该更能客观的平价丘的大类资产配置能力。统计结果显示，大类资产配置实际上没有提供正的超额收益。因此，丘在过去7年的基金管理中并没有显示出大类资产配置的能力。那么他的靓丽的业绩表现，必然来自于出众的行业配置和个股选择能力。也正如在调研中，丘自身回应的，“自下而上”是他进行投资时的基本程序。而“自下而上”的思考过程，往往容易忽略大类资产配置。这与我们的数据分析的结果是吻合的。
+
+
+## 弱行业配置能力
+既然基金产品的超额收益并非得益于大类资产的配置，那么比如来自与行业配置、选股以及择时的能力。需要提前指出的是，这三个能力在逻辑与实践中都不是相互独立的。好的投资标的往往也意味着好的投资时机，而好股票的挖掘与选择自然也带来了相应行业的配置偏好。但是这三种能力又在某种程度上可以区别开来，因为它们毕竟是在投资的不同决策层面和时点上的投资活动。我们认为：
+
+行为 | 动机 | 度量方法
+-----|------|---------
+行业配置|smart beta | $\sum(w_i-w_i^B)(r_i^B-r^B)$
+择股 | 持续的alpha | $\sum w_{i}(r_{i}^F-r_{i}^B)$
+择时 | 动态的alpha | 未解释的差额部分
+
+因为所获得数据精确程度的不同，我们计算的以上三个方面能力对于总超额收益的贡献比例可能是不精确的，读者应该更多的关注其相对值以及相关的统计推论。
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=FALSE,fig.width=11}
+df=industry_contribution(code='540006',from='2014-09-16')
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+a=aggregate(contribution~yearqtr,df,win_ratio)
+b=aggregate(contribution~yearqtr,df,sum)
+a$total<-b$contribution
+a[,2]=a[,2]*100
+knitr::kable(a,digits=2,caption='汇丰晋信大盘行业配置能力',col.names=c('日期','行业配置成功率%','行业配置贡献超额收益率%'))
+t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+```
+
+从上表可以看出，丘栋荣在汇丰晋信大盘基金的行业配置管理中没有表现出明显的行业判断与配置的能力。同样的情形出现在他管理的另外一只基金当中。
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=FALSE,fig.width=11}
+df=industry_contribution(code='000849',from='2014-09-16')
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+a=aggregate(contribution~yearqtr,df,win_ratio)
+b=aggregate(contribution~yearqtr,df,sum)
+a$total<-b$contribution
+a[,2]=a[,2]*100
+knitr::kable(a,digits=2,caption='汇丰晋信双核策略行业配置能力',col.names=c('日期','行业配置成功率%','行业配置贡献超额收益率%'))
+t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+```
+
+
+
+## 择股能力：超强！
+公开渠道获得的持仓数据频率为每半年一次。我们依据此数据分析基金管理人的择股能力。当然，由于更新频率粗糙，读者有理由担心计算精度的问题。不过从另外一个角度看，我们所谓的择股能力是对照于择时能力而言获取相对持续的alpha的能力。这里的相对持续，完全可以根据我们研究的需要而定义。此处，定义半年为一个相对持续的alpha的标准，也是合情合理的。
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=FALSE,fig.width=11}
+df=stock_contribution(code='540006',from='2014-09-16')
+
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+a=aggregate(industry_return_algo3-bogey_return~report_date,df,win_ratio)
+b=aggregate(weight_algo3*(industry_return_algo3-bogey_return)~report_date,df,sum)
+a$total<-b[,2]
+a[,2]=a[,2]*100
+knitr::kable(a,digits=2,caption='汇丰晋信大盘择股能力',col.names=c('日期','行业择股成功率%','择股贡献超额收益率%'))
+t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+```
+
+从统计结果可以看出，丘在汇丰晋信大盘基金的管理上显示除了明显的择股能力——即他能够选择出在未来6个月的投资周期上回报好于对应行业指数表现的股票组合，而且择股能力贡献的平均超额表现高达9.21%每半年,年化19%。当然这种能力也不是总是能够化险为夷的“金手指”。在2015年后半年的投资中，因为市场环境的急剧恶化，择股方面并没有显示出正的超额收益，但同时也没有在择股上产生较大的负收益，因此也才能通过适当的择时与止损使得2015年下半年的表现任然能够超越指数。
+
+
+
+## 择时能力：稳健有效
+择时能力在本文的设定中包括以下方面：
+
+* 交易周期短于半年的动态alpha机会，如一些短期事件性投资机会、相对明确的业绩反转预期等。
+* 上升通道中的止盈能力
+* 下降通道中的止亏能力
+
+所以择时能力并不总是能够带来正的超额收益，但是它能够确保落袋为安（止盈能力）或者保命再战（止亏能力），对于提高基金的风险收益比（如夏普率）是十分重要的。
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=FALSE,fig.width=11 }
+df=timing_contribution('540006',from='2014-09-16')
+knitr::kable(df,digits=2,caption='汇丰晋信大盘择时能力',col.names=c('日期','择时能力贡献超额收益率%'))
+t=t.test(df[,2],mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+```
+
+从上表中可以看出，丘在择时方面有显著的正收益。尤其重要的是，无论在牛市的2014-2015上半年还是紧随其后的熊市，丘的择时能力变现都是抢眼的，这得益于他的选股思路中PB-ROE的双指标模式，兼顾了盈利能力与估值水平。估值水平随着价格的变化自然的形成了明确的买入和卖出信号。择时失效的2016年上半年，相信部分原因来自于熔断对于市场超出预期的冲击以及基金仓位的限制。
+
+# 工作及教育经历
+
+## 教育经历
+
+1. 天津大学 (?-?) 化工工程与工艺
+2. 长江商学院金融MBA (2013)
+
+## 工作经历
+
+1. 厦门宏发电声股份有限公司工程师
+2. 大闽食品(漳州)有限公司销售经理
+3. 群益国际控股有限公司上海代表处(台湾券商) 研究部消费品行业研究员、研究组长 (2007)
+4. 汇丰晋信基金管理有限公司 (2010年9月) 行业研究员、高级研究员、基金经理(2014年), 管理产品市值占汇丰晋信40%.
+
+# 投资方法体系
+
+## 投资方法演化
+
+根据公开资料, 丘栋荣大学二年级接触证券行业, 2007年以教科书观点入行, 学习并一度使用成长价值投资的方法, 即通过发现与投资成长白马股, 在伴随企业的成长的过程中获取投资收益. 2012年左右认识到成长的不确定性, 进而意识到收益与风险的匹配关系, 从而形成PB-ROE价值选股的投资方法.
+
+## 投资方法：基于PB-ROE价值选股
+
+基本信仰：
+
+1. PB 代表市场对于企业的资产价值评估以及估值溢价
+2. ROE 代表企业当期资产盈利能力
+
+所以PB-ROE方法的核心思想是寻找市场估值溢价与企业资产盈利能力的不匹配关系, 也就是所谓价值低估的股票.
+
+此处需要明确以下几点:
+
+1. 使用PB-ROE 而不是传统的PE, 是因为丘栋荣的"PB-ROE"= PE $\times Equity/Book$, 也就是考虑了资本杠杆率对于PE的影响, 做了某种程度上的修正.
+2. 意识到资产的会计价值以及盈利数据的某种可操作性, 丘栋荣在使用PB-ROE时, 不是作为一个绝对指标像量化交易策略来进行. 
+
+因其本身有行业研究员的背景, 所以PB-ROE是作为一种必要条件来促使他进行特定股票的分析与研究. 而在这个过程中, 他特别强调了"风险溢价"
+
+
+## 投资方法：基于风险溢价的资产配置策略
+所谓风险溢价, 是指金融产品因为本身对应了特定的风险, 从而在收益上要求的高于无风险收益水平的超额收益. 所以风险溢价包含了两个重要因素
+
+1. 无风险水平,
+2. 金融产品对应的风险.
+
+所以从宏观上风险溢价水平高, 则促使提高仓位或者超配某些类别的资产, 反之, 则低配. 估计宏观风险溢价水平的时候, 丘栋荣直接使用了指数当前估值与10年期国债收益的差值作为指数的风险溢价.
+微观上, 则更具体的考虑股票对应的风险, 在PB-ROE选股方法的基础上, 进一步筛选风险溢价较高的股票. 如果自下而上的, 无法选出足够分散的股票, 则降低整体的仓位.
+
+## 风控方法：基于业绩归因与风险归因
+借助于公司提供的平台, 丘栋荣在进行资产配置和风险管控的时候, 强调使用归因分析的方法. 这使得他的资产配置方法上多少出现了风险平价策略的影子. 尽管对于风险平价策略还是有一定的争议, 但是一个不可否认的基本事实是风险平价策略确实相对于一般的主动性策略更多的考虑到了风险的因素, 因而在全球经济大衰退的背景下的确能够赢得相对稳健的回报.
+
+
+# 评价
+
+丘栋荣是最近高光的基金管理人，虽然从业时间不是特别长，但是在2014年至今的牛熊装换的市场中交出了亮眼的成绩。我们基于公开信息，进行深度的科学分析，结合与其面对面的交流，做出如下评判：
+
+1. 丘栋荣的低换手、长持有的交易风格，和低PB与PE的持股特点特别的切合了2015年股灾以来投资者风险偏好降低，市场风格少变化的行情特点；
+2. 作为一名主动性基金管理人，丘栋荣是一名偏“稳健型”的、坚定的价值投资为主的主动管理人；
+3. 丘栋荣的PB-ROE选股方法，强调估值与价值的对应、风险与溢价的平衡，在市场趋于价值投资的过程中先行一步，取得了亮眼的成绩；
+4. 遗憾的是丘栋荣并不具备专业的经济学背景或者丰富的跨市场、跨行业经验，使得他的大类资产以及行业配置能力不强。当市场进一步成熟，原本相对持续的alpha迅速的转变为smart beta之后，其持续的超额表现能力将会收到挑战；
+5. 同时，市场在归于价值投资的过程中并非单向而行的，中国经济的成熟化，或者说寡头化，也不是一蹴而就的。在这当中，仍然会有一定时期的、持续的成长型的机会。丘栋荣当前使用的选股方法可能并不适合成长型风格的市场，这是他未来可能面临的又一个挑战。

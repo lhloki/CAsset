@@ -1,0 +1,18 @@
+Package: CAsset
+Type: Package
+Title: Asset Returns of China's Market
+Version: 0.2.7
+Author: Hai Lan
+Maintainer: Hai Lan <lh_loki@163.com>
+Description: Three levels of asset returns are included in this package. Top level assets include stock, bond, cash, commodity and real estates. Only one or two representitive indexes in each asset class. High level assets include more indexes in each asset class. Low level assets, include individual stocks, bonds or futures return. For asset, there are four type of returns: daily, weekly, monthly and quarterly.
+License: MIT
+Encoding: UTF-8
+LazyData: true
+VignetteBuilder: knitr
+Imports: RPostgreSQL,
+    sqldf,
+    quantmod,
+    xts
+RoxygenNote: 6.0.1.9000
+Suggests: knitr,
+    rmarkdown

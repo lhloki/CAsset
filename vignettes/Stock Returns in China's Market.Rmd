@@ -1,0 +1,249 @@
+---
+title: "Individual Stock Returns in China's Market"
+author: "Hai Lan"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+在这篇短文中，我们介绍如何使用我们提供的CAsset包，分析中国股票市场各个频率下的回报率。在说明包CAsset的用法的同时，也提供对于中国股票市场的初步认识。
+
+## 数据生成
+
+针对中国股市，我们设计了顶层（top）、高层(high)、股票层(stock)三个层次的收益数据。分别是
+
+### top level
+```{r, echo=FALSE, results='asis'}
+stock.indexes=c('399373',	'399372','399377','399376','399375','399374','000300','399101','399606')
+stock.names=c('large.cap.value','large.cap.growth','small.cap.value',
+              'small.cap.growth','middle.cap.value','middle.cap.growth',
+              'hs300','middle.small.cap',' growth.enterprise')
+
+asset.top = data.frame(cbind(stock.indexes,stock.names))
+knitr::kable(asset.top)
+```
+
+### high level
+```{r, echo=FALSE, results='asis'}
+stock.industry=c('801010', '801020', '801030', '801040', '801050', '801080', '801110', '801120', '801130', '801140', '801150',
+                 '801160', '801170', '801180', '801200', '801210', '801230', '801710', '801720', '801730', '801740', '801750',
+                 '801760', '801770', '801780', '801790', '801880', '801890')
+stock.industry.cname=c('农林牧渔',
+                       '采掘',
+                       '化工',
+                       '钢铁',
+                       '有色金属',
+                       '电子',
+                       '家用电器',
+                       '食品饮料',
+                       '纺织服装',
+                       '轻工制造',
+                       '医药生物',
+                       '公用事业',
+                       '交通运输',
+                       '房地产',
+                       '商业贸易',
+                       '休闲服务',
+                       '综合',
+                       '建筑材料',
+                       '建筑装饰',
+                       '电气设备',
+                       '国防军工',
+                       '计算机',
+                       '传媒',
+                       '通信',
+                       '银行',
+                       '非银金融',
+                       '汽车',
+                       '机械设备')
+asset.high = data.frame(cbind(stock.industry,stock.industry.cname))
+knitr::kable(asset.high)
+```
+
+### stock level
+对于股票个股数据，包含所有股票的回报率数据当然有它的价值，只是我们处理无论是实际的还是理论上的问题，往往习惯使用一个特定子集合的股票数据，比如按行业或者地域又或者概念等。这些数据的采样方法跟以上没有任何不同。不再赘述。
+
+在此，我们给出一个构造随机股票子集的方法randomstocks。之所以采用随机，是为了在理论分析上排除掉主观选择的偏差。
+
+## 数据印象
+我们对于本包提供的数据集做一系列的简单处理，以期对于中国股票市场有一个初步的认识。
+
+```{r, echo=FALSE}
+library(CAsset)
+library(stats)
+library(xts)
+data("stocks_daily")
+```
+
+```{r, fig.width=7, fig.height=6}
+par(mfrow=c(3,5))
+for(i in 1:15)
+{
+  dt = density(stocks_daily[,i],na.rm=T)
+  plot(dt,main=colnames(stocks_daily)[i])
+}
+```
+我们以股票:航天长峰,吉林敖东,智度股份和瑞茂通为例子, 具体的研判它们的概率分布特质.
+```{r, fig.width=7, fig.height=6}
+library(fitdistrplus)
+library(metRology)
+stock_ind =c(2,4,9,12)
+#par(mfrow=c(2,2))
+for( i in stock_ind)
+{
+  descdist(as.numeric(na.omit(stocks_daily[,i])),boot=1000)
+}
+
+```
+
+从图中可以看出, 从2000年到当前的个股每日收益数据, 与常见的几大类连续分布的标准概率分布模型相比较都有比较大的差距. 可能的原因是:
+
+* 过去17年的日收益数据变化巨大, 并非服从同一个概率分布模型
+* 中国市场日收益数据存在上下界的情况: 一般股票$\pm 10\%$, ST的股票$\pm 5\%$. 所以更精确的做法是于受限标准模型进行比较.
+* 参考的标准概率分布模型不足一描述日收益数据, 需要考虑一些具备肥尾特性的模型, 比如 t分布, pareto分布.
+
+下边我们一一考察.
+
+
+### 随时间而变化?
+
+我们先将整个的每日回报率按照年,季度分为不重复的区间段,对于每个区间段上考察其概率分布模型.
+```{r, fig.width=7, fig.height=6}
+for(i in stock_ind)
+{
+  apply.yearly(stocks_daily[,i], function(x) {if(length(na.omit(x))>100) descdist(as.numeric(na.omit(x)),boot=1000)})
+}
+```
+逐年来看, 依旧不能明确那个分布模型能够较好的描述每日收益数据, 但是毕竟相对于把所有的历史数据看做一个标准模型来比较, 结果要清晰了很多. 比较多的看到logistic分布相对和实际数据接近, 再考虑学术界常见用来描述收益数据的normal和student分布. 我们定量的看究竟那个模型能够相对更好的描述每日收益数据的概率分布. 同时,我们注意到中国股市对于日涨跌幅度有限制: 非受限股票为$\pm 10\%$,受限(ST)股票为$\pm 5\%$. 我们把这种限制考虑进去, 用以拟合的实际上是截去两边以后的分布.
+```{r, fig.width=7, fig.height=6, eval=FALSE}
+require(truncinflatedist)
+
+fitreturn<-function(x,fitnames=NULL,lbound=-0.105,ubound=0.105)
+{
+  if(!is.null(x))
+  {
+    x = as.numeric(x)
+    lbound=min(x)
+    ubound=max(x)
+    lbound = as.integer(lbound*100)/100
+    ubound = as.integer(ubound*100)/100
+    x[x<=0.98*lbound]=lbound
+    x[x>=0.98*ubound]=ubound
+    #probs = seq(0,1,by=1/50)
+    if(length(x)>30)
+    {
+      fits<-list()
+      if(is.null(fitnames))
+        fitnames = c('tilogis','tinorm','tit.scaled')
+      for(c in fitnames)
+      {
+        if(c=='tilogis')
+        {
+          #probs = c(1/3,2/3)
+          #fit<-fitdist(x,c,fix.arg=list(lbound=lbound,ubound=ubound),start=list(location=0,scale=1),method='qme',probs=probs)
+          fit<-fitdist(x,c,fix.arg=list(lbound=lbound,ubound=ubound),start=list(location=0,scale=1),method='mle',control=list(maxit=2000,reltol=1e-5))
+        }
+        else if(c=='tinorm')
+        {
+          #probs = c(1/3,2/3)
+          #fit<-fitdist(x,c,fix.arg=list(lbound=lbound,ubound=ubound),start=list(mean=mean(x),sd=sd(x)),method='qme',probs=probs)
+          fit<-fitdist(x,c,fix.arg=list(lbound=lbound,ubound=ubound),start=list(mean=mean(x),sd=sd(x)),method='mle',control=list(maxit=2000,reltol=1e-5))
+        }
+        else if(c=='tit.scaled')
+        {
+          #probs = c(1/3,2/9,2/9,2/9)
+          #fit<-fitdist(x,c,fix.arg=list(lbound=lbound,ubound=ubound),start=list(df=2,mean=mean(x),sd=sd(x),ncp=0),method='qme',probs=probs)
+          fit<-fitdist(x,c,fix.arg=list(lbound=lbound,ubound=ubound),start=list(df=2,mean=mean(x),sd=sd(x),ncp=0),method='mle',control=list(maxit=2000,reltol=1e-5))
+        }
+        else
+          fit<-fitdist(x,c,method='mle')
+        fits<-c(fits,list(fit))
+      }
+
+      cdfcomp(fits,legendtext=fitnames)
+      denscomp(fits,legendtext=fitnames)
+      qqcomp(fits,legendtext=fitnames)
+      ppcomp(fits,legendtext=fitnames)
+      if(length(fitnames)>1)
+        gofstat(fits,fitnames=fitnames)
+    }
+  }
+}
+lapply(split(na.omit(stocks_daily[,2]),'years'),fitreturn)
+
+```
+在大多数情况下, 对于股票航天长峰,在考察的三个候选分布中, t分布或者logistic分布能够相对比较好的描述年度数据的概率分布模型. 但是也要注意:
+
+1. 肥尾性质难以被t分布或者logistic分布较好的描述
+2. 分布的参数随着时间变化
+3. 受限制期间(ST)与非受限制期间分布明显不同. 受限制期间,截边后的分布是必须要考虑的. 非受限期间,是否考虑截边,差异不大.
+
+考察伊利股份
+```{r,fig.width=7, fig.height=6,eval=FALSE}
+lapply(split(na.omit(stocks_daily[,8]),'years'),fitreturn)
+```
+也有相类似的情况, 因此我们可以说, 在常见的概率分布模型中, 没有那个模型能够很好的描述中国股票市场的每日回报数据的概率分布. 相比较而言, t分布和logistic分布的描述稍好一些.
+但是即便是相对好的t分布或者logistic分布, 它们的参数也是随着时间而变化的.
+
+以下比较好的说明了分布的参数随着时间而变化的情形.
+```{r,fig.width=7, fig.height=6}
+x<-stocks_daily['2007/',2]
+es.mean<-na.omit(rollapply(na.omit(x),width=60,FUN=mean,by=10))
+plot(es.mean,main='Mean of daily returns')
+es.sd<-na.omit(rollapply(na.omit(x),width=60,FUN=sd,by=10))
+plot(es.sd,main='Standard deviation of daily returns')
+plot(es.mean,main='Confidence Intervals of daily returns',ylim=c(-0.03,0.03))
+lines(es.mean+1.97*es.sd/sqrt(60),col='red')
+lines(es.mean-1.97*es.sd/sqrt(60),col='green')
+```
+以上是以航天长峰2007年以来的每日收益数据为基础,每60个交易日为样本,以10个交易日为滑动步长计算的日品均收益率以及其标准方差. 计算的结果表明:
+
+1. 每日收益的均值,方差是随时间而变化的
+2. 以方差为代表的日收益数据的波动性有聚集效应: 即在一段时间内波动较为剧烈而另外一段时间有相对平稳.
+3. 从均值与方差的绝对值相互比较可以看出, 估计准确的历史平均收益是难以精确的, 更遑论预测.
+
+同样的方式, 我们可以研究周回报, 月回报数据的特性. 可以猜想的是, 随着时间区间增长, 交易的噪声以及市场的限制的干扰将逐渐减弱. 但是否这就意味着它们可以更容易的被模型描述甚至被预测呢?
+
+## 周回报数据
+
+我们以股票:航天长峰,吉林敖东,智度股份和瑞茂通为例子, 具体的研判它们的概率分布特质.
+```{r, fig.width=7, fig.height=6}
+data("stocks_weekly")
+stock_ind =c(2,4,9,12)
+#par(mfrow=c(2,2))
+for( i in stock_ind)
+{
+  descdist(as.numeric(na.omit(stocks_weekly[,i])),boot=1000)
+}
+
+```
+依旧没有那个模型能够较好的描述周回报的概率分布. 如果非要在常规的概率模型中做选择的话, 在所有列出的模型中logistic分布仍然是最为接近的. 另外t分布也有一定的相似度.
+
+```{r,fig.width=7, fig.height=6,eval=FALSE}
+for( i in stock_ind)
+{
+lapply(split(na.omit(stocks_weekly[,i]),'years'),fitreturn)
+}
+```
+考察其均值与方差的变化
+```{r,fig.width=7, fig.height=6}
+x<-stocks_weekly['2007/',2]
+es.mean<-na.omit(rollapply(na.omit(x),width=26,FUN=mean,by=4))
+plot(es.mean,main='Mean of weekly returns')
+es.sd<-na.omit(rollapply(na.omit(x),width=26,FUN=sd,by=4))
+plot(es.sd,main='Standard deviation of weakly returns')
+plot(es.mean,main='Confidence Intervals of weekly returns',ylim=c(-0.10,0.10))
+lines(es.mean+1.97*es.sd/sqrt(26),col='red')
+lines(es.mean-1.97*es.sd/sqrt(26),col='green')
+```
+
+## 结论
+关于中国股票市场个股的回报率数据, 我们有了一个初步的结论:
+
+1. 在常见的简单概率模型中, t分布和logistic分布能够相对好的描述一年内的每日,每周回报的数据的概率分布.
+2. 回报率的均值和方差是随着时间而变化的, 因而使用t或者logistic分布来描述长期的(比如若干年之内的)日或者周回报率数据是不恰当的, 事实上, 对于这样大量的, 非同分布的数据没有任何一个简单的概率分布模型能够较好的拟合它的分布.
+3. 相对于方差, 收益的均值是较小的. 这使得准确的估计历史平均收益, 理论上需要大量的历史数据; 而又由于回报率的均值, 方差都是随着时间而变化的. 这实际上使得准确的估计历史平均回报率变得没有意义.
+4. 因此, 无论是在风险管理还是在投资组合优化中, 回报率的动态的估计模型是需要认真考虑的问题.
