@@ -94,6 +94,32 @@ randomstocks<-function(n,older.than='20000101')
   return(stocks)
 }
 
+
+randomportfolio<-function(n=30,from='2010-01-01',weights=NULL,rebalance='weeks',measure=c('return','sharpe','sortino'))
+{
+  sql_str = paste('select code,name from stock_from_k where "timeToMarket" is not null and "timeToMarket">0 and cast(to_char("timeToMarket",\'99999999\') as date)<=\'',as.character(from), '\' order by random() limit ',as.character(n),sep='')
+  stocks=sqldf(sql_str)
+  freq<-c('daily','daily','weekly','monthly','quarterly','yearly')
+  names(freq)<-c('NA','days','weeks','months','quarters','years')
+
+  stock_rets=getReturnFromDB(stocks$code,from,frequency=freq[rebalance],table.name='stock_ohlc_day_from_k',join.method='left outer')
+  port_rets=Return.portfolio(stock_rets,weights=weights,rebalance_on=rebalance)
+  ret<-c()
+  for(m in measure)
+  {
+    switch(m,'return'={
+      ret<-c(ret,Return.cumulative(port_rets))
+    },'sharpe'={
+      ret<-c(ret,SharpeRatio.annualized(port_rets))
+    },'sortino'={
+      ret<-c(ret,SortinoRatio(port_rets))
+    },'drawdown'={
+      ret<-c(ret,maxDrawdown(port_rets))
+    })
+  }
+  names(ret)<-measure
+  return(ret)
+}
 #' @title saveReturns: retrieve data from related data table and save them into a rda file
 #' @param assets asset codes ,e.g. '000300' is the code for index hs300
 #' @param asset.names readable names for each asset
@@ -795,7 +821,7 @@ getReturnFromDB<-function(assets,from,to=NULL,frequency='daily',table.name='inde
   #names(df_old)[-1]=asset.names
   if(nrow(df)==0)
     return(NULL)
-  prices<-xts(df_old[-1],df_old$date)
+  prices<-xts(df_old[-1],as.Date(df_old$date))
   returns = NULL
   for(i in seq(ncol(prices)))
   {
