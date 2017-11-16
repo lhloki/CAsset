@@ -1,0 +1,28 @@
+
+### `r fund.names[i]`持仓风格
+
+```{r warning=FALSE,echo=FALSE,results="asis"}
+model<-fund_holding_style(fund.codes[i],from=froms[i],to=tos[i],frequency='weekly',style=1,constraint=fund.constraints[i],method='rolling-sharpe')
+model[abs(model)<0.0001]=0
+data<-model[,-11]
+d=melt(data,id.vars=1)
+ggplot(d,aes(x=date,y=value,fill=variable))+geom_bar(stat='identity',width=0.5)+guides(fill=guide_legend(reverse = TRUE))+scale_fill_brewer(palette = 'RdBu')
+
+imax=which.max(colMeans(data[,-1]))+1
+if(mean(data[,imax])/sd(data[,imax])>2) ##stable, show the average
+{
+  s=colMeans(data[,-1])
+  s = s[s>0.001]
+  formula<-as.data.frame(matrix(s*100,1,length(s)))
+  colnames(formula)<-names(s)
+  kable(formula,digits=2,caption='平均持仓风格因子权重(%)')
+  say= sprintf('风格切换相对平稳，如平均占比最高的%s其占比最高%.02f%%最低%.02f%%',colnames(data)[imax],max(data[,imax])*100,abs(min(data[,imax]))*100)
+} else
+{
+  say=sprintf('风格变化较大，如平均占比最高的%s其占比最高%.02f%%最低%.02f%%',colnames(data)[imax],max(data[,imax])*100,abs(min(data[,imax]))*100)
+  ##print(s)
+}
+```
+
+`r say`
+

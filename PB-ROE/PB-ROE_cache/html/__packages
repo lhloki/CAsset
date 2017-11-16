@@ -17,3 +17,10 @@ lubridate
 nlme
 mgcv
 quadprog
+reshape2
+plyr
+tidyr
+foreach
+iterators
+doParallel
+dlm

@@ -30,7 +30,12 @@ init<-function()
   library('mgcv')
   library('quadprog')
   library('plyr')
+  library('tidyr')
   library('doParallel')
+  library('xts')
+  library('dlm')
+  library('ggplot2')
+  library('reshape2')
   options(sqldf.RPostgreSQL.user='root',sqldf.RPostgreSQL.password='r00t',sqldf.RPostgreSQL.dbname='finance',sqldf.RPostgreSQL.host='localhost',sqldf.RPostgreSQL.port=5432)
 }
 top.level.assets=c('000300','000012','000013','000832','H30009')
@@ -288,17 +293,22 @@ getFunds<-function(codes,from='2006-01-01',fund.names=NULL,to=NULL)
     }
   }
   #names(df_old)[-1]=asset.names
-  returns<-xts(df_old[-1],df_old$date)
-  colnames(returns)=fund.names
+  if(nrow(df_old)==0)
+    returns<-NULL
+  else
+  {
+    returns<-xts(df_old[-1],df_old$date)
+    colnames(returns)=fund.names
+  }
   return(returns)
 }
 
-fund_holding_style<-function(fund.code,from='2013-01-01',to=NULL,style=1,frequency='monthly',constraint=list(stock=c(0.3,0.95),bond=c(0,1),cash=c(0.05,1)))
+fund_holding_style<-function(fund.code,from='2013-01-01',to=NULL,style=1,frequency='monthly',constraint=list(stock=c(0.3,0.95),bond=c(0,1),cash=c(0.05,1)),method='sharpe')
 {
   if(style==1)
   {
     styles<-c('399372','399373','399374','399375','399376','399377','CBA001')
-    style.names<-c('大盘成长','大盘价值', '中盘成长', '中盘价值', '小盘成长', '小盘价值','债券财富指数')
+    style.names<-c('大盘成长','大盘价值', '中盘成长', '中盘价值', '小盘成长', '小盘价值','债券')
     df = getReturnFromDB(styles,from=from,to=to,frequency=frequency,asset.names=style.names)
 
   }
@@ -306,7 +316,7 @@ fund_holding_style<-function(fund.code,from='2013-01-01',to=NULL,style=1,frequen
   {
     #the earliest data of styles is 2002-01-04, which is determined by CBA001.
     styles<-c('801811','801812','801813','801821','801822','801823','801831','801832','801833','801851','801852','801853','801863','CBA001')
-    style.names<-c('大盘','中盘','小盘','高PE','中PE','低PE','高PB','中PB','低PB','亏损股','微利股','绩优股','次新股','债券财富指数')
+    style.names<-c('大盘','中盘','小盘','高PE','中PE','低PE','高PB','中PB','低PB','亏损股','微利股','绩优股','次新股','债券')
     df = getReturnFromDB(styles,from=from,to=to,frequency = frequency,asset.names = style.names)
   }
   early.date = as.Date(from)-365
@@ -328,6 +338,31 @@ fund_holding_style<-function(fund.code,from='2013-01-01',to=NULL,style=1,frequen
     return(mean(x[1:l,],na.rm=TRUE))
   }
 
+  fund<-getFunds(fund.code,from=from,to=to)
+  if(frequency=='weekly')
+  {
+    fund<-apply.weekly(fund,Return.cumulative)
+    fund$year = year(index(fund))
+    fund$week = isoweek(index(fund))
+  }
+  else
+  {
+    if(frequency=='monthly')
+    {
+      fund<-apply.monthly(fund,Return.cumulative)
+      fund$year = year(index(fund))
+      fund$month = month(index(fund))
+    }
+    else
+    {
+      if(frequency=='quarterly')
+      {
+        fund<-apply.quarterly(fund,Return.cumulative)
+        fund$year = year(index(fund))
+        fund$month = month(index(fund))
+      }
+    }
+  }
 
   if(frequency=='daily')
   {
@@ -336,7 +371,11 @@ fund_holding_style<-function(fund.code,from='2013-01-01',to=NULL,style=1,frequen
     colnames(r_f)<-c('cash')
     r_f = r_f/254/100
     df=merge(df,r_f)
-    df=as.data.frame(df)
+    df=merge(df,fund)
+    fund = df[,ncol(df)]
+    dates<-index(df)
+    df=as.data.frame(df[,-ncol(df)])
+    df$money = 0
   }
   else
     {
@@ -348,12 +387,17 @@ fund_holding_style<-function(fund.code,from='2013-01-01',to=NULL,style=1,frequen
         colnames(r_f)<-c('cash')
         r_f = r_f/54/100
         r_f$year = year(index(r_f))
-        r_f$week = week(index(r_f))
+        r_f$week = isoweek(index(r_f))
         r_f = as.data.frame(r_f)
         df$year = year(index(df))
-        df$week = week(index(df))
+        df$week = isoweek(index(df))
         df = as.data.frame(df)
-        df = merge(df,r_f,c('year','week'),sort=FALSE)[,c(-1,-2)]
+        df = merge(df,r_f,c('year','week'),sort=FALSE)
+        df = merge(df,fund,c('year','week'),sort=FALSE)
+        fund = df[,ncol(df)]
+        dates = df$year+(df[,2]-1)/52
+        df = df [,c(-1,-2,-ncol(df))]
+        df$money = 0
       }
       else
       {
@@ -370,7 +414,12 @@ fund_holding_style<-function(fund.code,from='2013-01-01',to=NULL,style=1,frequen
           df$year = year(index(df))
           df$month = month(index(df))
           df = as.data.frame(df)
-          df = merge(df,r_f,c('year','month'),sort=FALSE)[,c(-1,-2)]
+          df = merge(df,r_f,c('year','month'),sort=FALSE)
+          df = merge(df,fund,c('year','month'),sort=FALSE)
+          fund = df[,ncol(df)]
+          dates = df$year+(df[,2]-1)/12
+          df = df [,c(-1,-2,-ncol(df))]
+          df$money = 0
         }
         else
         {
@@ -387,7 +436,12 @@ fund_holding_style<-function(fund.code,from='2013-01-01',to=NULL,style=1,frequen
             df$year = year(index(df))
             df$quarter = quarter(index(df))
             df = as.data.frame(df)
-            df = merge(df,r_f,c('year','quarter'),sort=FALSE)[,c(-1,-2)]
+            df = merge(df,r_f,c('year','quarter'),sort=FALSE)
+            df = merge(df,fund,c('year','quarter'),sort=FALSE)
+            fund = df[,ncol(df)]
+            dates = df$year+(df[,2]-1)/4
+            df = df [,c(-1,-2,-ncol(df))]
+            df$money = 0
           }
           else
           {
@@ -396,25 +450,7 @@ fund_holding_style<-function(fund.code,from='2013-01-01',to=NULL,style=1,frequen
         }
       }
     }
-  fund<-getFunds(fund.code,from=from,to=to)
-  if(frequency=='weekly')
-  {
-    fund<-apply.weekly(fund,Return.cumulative)
-  }
-  else
-    {
-      if(frequency=='monthly')
-      {
-        fund<-apply.monthly(fund,Return.cumulative)
-      }
-      else
-        {
-          if(frequency=='quarterly')
-          {
-            fund<-apply.quarterly(fund,Return.cumulative)
-          }
-        }
-    }
+
 
   C<-matrix(1,1,ncol(df))
   c<-1
@@ -430,24 +466,120 @@ fund_holding_style<-function(fund.code,from='2013-01-01',to=NULL,style=1,frequen
   w<-fund*0+1
   Ain<-matrix(0,5+ncol(df),ncol(df))
   bin<-rep(0,5+ncol(df))
-  Ain[1,]=c(rep(1,length(styles)-1),0,0)
+  Ain[1,]=c(rep(1,length(styles)-1),0,0,0) ##stock
   bin[1]=ifelse(!is.null(constraint$stock),constraint$stock[1],0)
-  Ain[2,]=c(rep(-1,length(styles)-1),0,0)
+  Ain[2,]=c(rep(-1,length(styles)-1),0,0,0)
   bin[2]=ifelse(!is.null(constraint$stock),-constraint$stock[2],-1)
-  Ain[3,]=c(rep(0,length(styles)-1),1,0)
+  Ain[3,]=c(rep(0,length(styles)-1),1,0,0) ##bond
   bin[3]=ifelse(!is.null(constraint$bond),constraint$bond[1],0)
-  Ain[4,]=c(rep(0,length(styles)-1),-1,0)
+  Ain[4,]=c(rep(0,length(styles)-1),-1,0,0)
   bin[4]=ifelse(!is.null(constraint$bond),-constraint$bond[2],-1)
-  Ain[5,]=c(rep(0,length(styles)),1)
+  Ain[5,]=c(rep(0,length(styles)),1,1) #cash + money, here cash stands for money carrying risk free rate,where money returns nothing.
   bin[5]=cash.min
-  Ain[c(-1,-2,-3,-4,-5),]=diag(1,ncol(df),ncol(df))
-  p<-c(rep((1-cash.min-bin[3]-0.0002)/(length(styles)-1),length(styles)-1),bin[3]+0.0001,cash.min+0.0001)
-  M<-list(X=as.matrix(df),y=fund,p=p,off=array(0,0),S=list(),w=w,c=c,C=C,Ain=Ain,bin=bin,sp=array(0,0))
-  p=pcls(M)    ### cannot find the right solution
-  yhat <- M$X %*% p
-  ybar<-mean(fund)
-  r_square =1- sum((fund-yhat)^2)/sum((fund-ybar)^2)
-  return(list(factors=c(style.names,'货币'), coefficients=p,r_square=r_square))
+  Ain[c(-1,-2,-3,-4,-5),]=diag(1,ncol(df),ncol(df)) ##nonnegative constraint
+
+  p0<-c(rep((1-cash.min-bin[3]-0.0002)/(length(styles)-1),length(styles)-1),bin[3]+0.0001,cash.min+0.0001,0)
+  if(method=='sharpe')
+  {
+    M<-list(X=as.matrix(df),y=fund,p=p0,off=array(0,0),S=list(),w=w,c=c,C=C,Ain=Ain,bin=bin,sp=array(0,0))
+    p=pcls(M)    ### cannot find the right solution
+    yhat <- M$X %*% p
+    ybar<-mean(fund)
+    r_square =1- sum((fund-yhat)^2)/sum((fund-ybar)^2)
+    return(list(factors=c(style.names,'货币','现金'), coefficients=p,r_square=r_square))
+  }
+  else
+  {
+    if(method=='rolling-sharpe')
+    {
+      size = max(2*ncol(df),24)
+      step = 4
+      res = data.frame()
+
+      if(size>=nrow(df))
+      {
+        warning('too small dataset, sharpe method is adopted instead of the called rolling-sharpe method')
+        M<-list(X=as.matrix(df),y=fund,p=p0,off=array(0,0),S=list(),w=w,c=c,C=C,Ain=Ain,bin=bin,sp=array(0,0))
+        p=pcls(M)
+        yhat <- M$X %*% p
+        ybar<-mean(fund)
+        r_square =1- sum((fund-yhat)^2)/sum((fund-ybar)^2)
+        res = rbind(res,c(dates[1],p,r_square))
+        colnames(res)<-c('date',style.names,'货币','现金','r_square')
+        return(res)
+      }
+      else
+      {
+
+        ## let's rolling
+        nmax=nrow(df)
+        i = 1
+        while(i<nmax-size)
+        {
+          window.x <- df[i:min((i+size),nmax),]
+          window.y <- fund[i:min((i+size),nmax)]
+          M<-list(X=as.matrix(window.x),y=window.y,p=p0,off=array(0,0),S=list(),w=window.y*0+1,c=c,C=C,Ain=Ain,bin=bin,sp=array(0,0))
+          p=pcls(M)
+          yhat <- M$X %*% p
+          ybar<-mean(window.y)
+          r_square =1- sum((window.y-yhat)^2)/sum((window.y-ybar)^2)
+          if(r_square>0)
+          {
+            res = rbind(res,c(dates[i],p,r_square))
+          }
+          i=i+step
+        }
+        if(nrow(res)==0)
+        {
+          warning('try with rolling-sharpe, but no meaningful results found, return with sharpe')
+          M<-list(X=as.matrix(df),y=fund,p=p0,off=array(0,0),S=list(),w=w,c=c,C=C,Ain=Ain,bin=bin,sp=array(0,0))
+          p=pcls(M)
+          yhat <- M$X %*% p
+          ybar<-mean(fund)
+          r_square =1- sum((fund-yhat)^2)/sum((fund-ybar)^2)
+          res = rbind(res,c(dates[1],p,r_square))
+
+        }
+        colnames(res)<-c('date',style.names,'货币','现金','r_square')
+        return(res)
+
+      }
+    }
+    else ##dlm method, this method is not subjected to the constraints, so that most likely the result is meaningless.
+    {
+      size = max(2*ncol(df),24)
+      res = data.frame()
+
+      if(size>=nrow(df))
+      {
+        warning('too small dataset, sharpe method is adopted instead of the called dlm method')
+        M<-list(X=as.matrix(df),y=fund,p=p0,off=array(0,0),S=list(),w=w,c=c,C=C,Ain=Ain,bin=bin,sp=array(0,0))
+        p=pcls(M)
+        yhat <- M$X %*% p
+        ybar<-mean(fund)
+        r_square =1- sum((fund-yhat)^2)/sum((fund-ybar)^2)
+        res = rbind(res,c(dates[1],p,r_square))
+        colnames(res)<-c('date',style.names,'货币','现金','r_square')
+        return(res)
+      }
+      M<-list(X=as.matrix(df[1:size,]),y=fund[1:size],p=p0,off=array(0,0),S=list(),w=rep(1,size),c=c,C=C,Ain=Ain,bin=bin,sp=array(0,0))
+      p=pcls(M)
+      mymod<-function(b)
+      {
+        m<-dlmModReg(df, FALSE, dV = b[1]^2,dW=b[-1]*b[-1],
+                     m0 = p,C0=matrix(0,length(p),length(p)))
+        return(m)
+      }
+      fit <- dlmMLE(fund, parm = rep(0.0001,length(p)+1),
+                    build = mymod)
+      mod<-mymod(fit$par)
+      smooth<-dlmSmooth(fund,mod)
+      p<-smooth$s[1:length(fund),]
+      res<-cbind(dates,p)
+      colnames(res)<-c('date',style.names,'货币','现金')
+      return(res)
+    }
+  }
 #  Dmat = t(as.matrix(df)) %*% as.matrix(df)
 #  dvec = t(as.matrix(df)) %*% fund
 #  Amat<-matrix(0,ncol(df),6+ncol(df))
@@ -458,6 +590,9 @@ fund_holding_style<-function(fund.code,from='2013-01-01',to=NULL,style=1,frequen
 #  meq = 1
 #  solve.QP(Dmat,dvec,Amat,bvec,meq)
 }
+
+
+
 create_table<-function(df,table_name)
 {
   sqlstr = sprintf('create table %s (',table_name)
@@ -888,16 +1023,42 @@ getPriceFromDB<-function(assets,from,to=NULL,table.name='index_ohlc_day',asset.n
 
 create_finance_table_with_filled_values<-function()
 {
-  df=sqldf(sprintf('select code,cast(to_char("timeToMarket",\'99999999\') as date) as early_date from stock_from_k where "timeToMarket" is not null and "timeToMarket">0 and cast(to_char("timeToMarket",\'99999999\') as date)<=\'%s\'',as.character(Sys.Date()-20)))
+  df=sqldf(sprintf('select code,cast(to_char("timeToMarket",\'99999999\') as date) as early_date from stock_from_k  where "timeToMarket" is not null and "timeToMarket">0 and cast(to_char("timeToMarket",\'99999999\') as date)<=\'%s\' and code not in (select distinct code from stock_finance_weight_with_fill_eastmoney)',as.character(Sys.Date()-20)))
   registerDoParallel(cores=16)
   foreach(i=1:nrow(df)) %dopar%
+  #for(i in 1:nrow(df))
   {
     sqlstr = sprintf("with x as (select * from stock_finance_weight_eastmoney where code='%s' order by date) select b.date as all_date,x.* from x right outer join stock_calendar b on x.date=b.date where b.date>='%s' order by b.date",df[i,'code'],df[i,'early_date'])
     dat = sqldf(sqlstr)
-    if(dat$code[1]=='NA')
-      next
-    dat = ddply(dat,.(all_date),function(x)replace(x,TRUE,lapply(x,na.locf)))
-    dat = dat[,-4]
-    to_sql(dat,'stock_finance_weight_with_fill_eastmoney','append')
+    dat=fill(dat,code,name,price,eps,pe,bps,pb,roe,cfps,pcf,net_income,net_income_yoy,all,OA,OB,.direction = 'down')
+    if(sum(!is.na(dat$code))>0)
+    {
+      dat = dat[,-4]
+      dat = dat[!is.na(dat$code),]
+      to_sql(dat,'stock_finance_weight_with_fill_eastmoney','append')
+    }
   }
+
+}
+
+stat_fund_mean_var<-function(life=10)
+{
+  from = as.character(Sys.Date()-365*life)
+  df=sqldf(sprintf('select symbol from fund_basicinfo where cast(clrq as date)<\'%s\'',from))
+  #registerDoParallel(cores=16)
+  res<-data.frame(mean.rate=numeric(nrow(df)),sd.rate=numeric(nrow(df)))
+  #foreach(i=1:nrow(df)) %dopar%
+  for(i in 1:nrow(df))
+  {
+    f=getFunds(df$symbol[i],from=from)
+    if(!is.null(f) && nrow(f)>0)
+    {
+      f=apply.quarterly(f,Return.annualized,scale=252)
+      f=f[f<1]
+      f=f[f>-1]
+      res$mean.rate[i]=mean(f,na.rm=TRUE)
+      res$sd.rate[i]=sd(f,na.rm=TRUE)
+    }
+  }
+  return(res)
 }

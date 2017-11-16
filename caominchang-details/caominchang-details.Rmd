@@ -1,0 +1,665 @@
+---
+title: "分析曹名长-技术报告"
+author:
+  - 蓝海
+  - 彭莉
+documentclass: ctexart
+output:
+  rticles::fund_analysis:
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+classoption: "hyperref,"
+---
+
+# 业绩表现
+
+## 曹名长
+  历任君安证券公司研究所研究员，闽发证券上海研发中心研究员，红塔证券资产管理总部投资经理，百瑞信托有限责任公司信托经理，新华基金管理公司总经理助理、基金经理。2015年6月加入中欧基金管理有限公司，现任事业部负责人、基金经理。
+
+  曹名长前后共管理过8个不同的基金产品，有些基金创设时间太短，不具备分析价值，所以我们重点的挑选了4只基金为代表进行分析。两支正在中欧基金管理的基金：中欧价值发现混合A和中欧潜力价值灵活配置混合；两支之前在新华基金管理的基金：新华钻石品质企业混合和新华优选分红混合。
+
+## 当前表现
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11,fig.cap='基金累计回报率与回撤'}
+require(CAsset)
+require(PerformanceAnalytics)
+init()
+options(digits=2)
+pdf.options(family = "GB1")
+fund.codes=c('166005','002685','001810','519165','519093','519089','519087')
+fund.names=c('中欧价值发现混合A','中欧丰泓沪港深混合A','中欧潜力价值灵活配置混合','新华鑫利灵活配置','新华钻石品质企业混合','新华优选成长混合','新华优选分红混合')
+froms=c('2015-11-20','2016-11-08','2015-11-20','2014-04-23','2010-02-03','2008-07-25','2006-07-12')
+tos=c(as.character(Sys.Date()),as.character(Sys.Date()),as.character(Sys.Date()),'2015-05-20','2015-06-09','2009-08-25','2015-06-09')
+fund.codes=fund.codes[c(-2,-4,-6)]
+fund.names=fund.names[c(-2,-4,-6)]
+froms=froms[c(-2,-4,-6)]
+tos=tos[c(-2,-4,-6)]
+fund.constraints=c(list(stock=c(0.6,0.95),bond=c(0,0.35),cash=0.05),list(stock=c(0,0.95),bond=c(0,0.95),cash=0.05),list(stock=c(0.6,0.95),bond=c(0,0.35),cash=0.05),list(stock=c(0.2,0.95),bond=c(0,1,0.80),cash=0.05))
+funds=getFunds(codes=fund.codes[c(1,2)],fund.names=fund.names[c(1,2)],from=froms[1])
+data(asset_top_daily)
+hs300<-getReturnFromDB('000300',from=(as.Date(froms[1])-60))
+colnames(hs300)<-'沪深300'
+funds = merge(funds,hs300,join='left')
+charts.PerformanceSummary(funds,event.labels=c('管理基金'),event.lines=froms[c(1,2)])
+knitr::kable(fund.performance(funds)[,c(-5,-6)],digits=2,col.names=c('名称','近半年','夏普率','近一年','夏普率','近两年','夏普率'))
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11,fig.cap='投资者收益风险比较'}
+fund.performance(funds,flag=3)
+```
+
+图1清楚的表明自曹名长在管理该两支基金以来相对于沪深300其累计收益率的不俗表现。同时在风险控制方面，除了2016年初的股灾2.0期间回撤相当之外，其他时候该两支基金的回撤都显著小于对应时期的沪深300的回撤，显示了良好的风险控制能力。图2明确的表明，固定一年期的投资者，无论何时买入这两只基金，他都可以获得相比沪深300更高的累计收益，并且日收益序列的风险收益比——夏普率——都是显著高于沪深300的。通俗的说，就是不但能够赚更多的钱，而且作为投资者，你还更有可能“拿得住”这样的投资对象，因为波动更小。表1以回溯的方式明确的显示了两支基金的相对优势。
+以上可见加入中欧基金以来，曹名长在管理的两支基金上都取得了不俗的业绩。
+
+## 历史表现
+
+曾经在新华基金管理过的基金产品在其管理期间的表现为：
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+fundl=getFunds(codes=fund.codes[c(4)],fund.names=fund.names[c(4)],from=froms[4],to=tos[4])
+hs300<-getReturnFromDB('000300',from=froms[4])
+colnames(hs300)<-'沪深300'
+funds = merge(fundl,hs300,join='left')
+charts.PerformanceSummary(funds,event.labels=c(paste('管理',fund.names[4],sep='')),event.lines=froms[c(4)])
+fund.performance(funds,3)
+fundb=getFunds(codes=fund.codes[c(3)],fund.names=fund.names[c(3)],from=froms[3],to=tos[3])
+funds = merge(fundb,hs300,join='left')
+charts.PerformanceSummary(funds,event.labels=c(paste('管理',fund.names[3],sep='')),event.lines=froms[c(3)])
+fund.performance(funds,3)
+funds=merge(fundl,fundb,join='left')
+funds=merge(funds,hs300,join='left')
+knitr::kable(fund.performance(funds),digits=2,col.names=c('名称','最后半年','夏普率','一年','夏普率','两年','夏普率','三年','夏普率'))
+```
+
+依旧可以看到，曹名长在长达9年的新华基金工作期间，其管理的基金在多数时候绝对收益超过沪深300，并且波动率小于参照。如投资者固定投资其管理的基金一年，大多数时候投资都会有正的收益（但是，绝对收益有负的情况。就是虽然跑过了市场，但是市场实在太糟！），并且持有期间的收益风险比好于沪深300。表2显示的其离开新华前3年的超乎常理的亮眼表现，更多的是来自2014-2015年中国市场的一波“疯牛”市，不可简单推论。
+
+# 风格分析
+
+## 交易风格
+
+基于公开信息，我们对曹名长的正在管理的中欧潜力价值灵活配置混合的交易风格分析如下：
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+df=fund.style(code=fund.codes[2],from=froms[2],to=tos[2])
+df=df[,c(-1,-2)]
+
+ranks<-c(3,5,7,9,11,13,15)
+for(j in seq(1:nrow(df)))
+{
+  for(i in ranks)
+  {
+    df[j,i]=as.integer(as.numeric(df[j,i])*100)
+  }
+}
+knitr::kable(df[,seq(1,7)],digits=2,col.names=c('日期','换手率','排名%','持有期','排名%','前十占比%','排名%'))
+knitr::kable(df[,c(1,seq(8,15))],digits=2,col.names=c('日期','行业前5占比%','排名%','平均集中度','排名%','PE','排名%','PB','排名%'))
+```
+
+其中排名，从0到100%，是按照对应数值从高到低的顺序，在同期同类基金中做出的。比如前10占比排名在20%左右，意味着其相对与一般混合式基金持有股票的前10占比比较小于约80%的基金。但是，该基金的行业集中度处于同类型基金的中间水平，换手率低于同类基金\footnote{因为基金经营时间不长，没有足够的报告数据，因此持有期数据仅有一次有价值的数据，读者对于这样的数据当谨慎怀疑。不过配合总换手率的数据，我们推论其持有期较长，是合理的。}。从以上表格中可以看出 *中欧潜力价值灵活配置混合基金，是以非常低的换手率，长期地投资于低PB和低PE的股票来获取收益的*。
+
+同样的对于早期在新华基金管理了接近9年的新华优选分红混合基金进行交易风格分析，我们也发现了相似的情况。数据如下：
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+df=fund.style(code=fund.codes[4],from=froms[4],to=tos[4])
+df=df[,c(-1,-2)]
+
+ranks<-c(3,5,7,9,11,13,15)
+for(j in seq(1:nrow(df)))
+{
+  for(i in ranks)
+  {
+    df[j,i]=as.integer(as.numeric(df[j,i])*100)
+  }
+}
+knitr::kable(df[,seq(1,7)],digits=2,col.names=c('日期','换手率','排名%','持有期','排名%','前十占比%','排名%'))
+knitr::kable(df[,c(1,seq(8,15))],digits=2,col.names=c('日期','行业前5占比%','排名%','平均集中度','排名%','PE','排名%','PB','排名%'))
+```
+
+在新华基金期间，其交易风格整体是低换手率，长持有期。尤其是在市场环境不好的2011-2012年间，换手率极低，显示出其超强的抗压能力。
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+df=fund.style(code=fund.codes[3],from=froms[3],to=tos[3])
+df=df[,c(-1,-2)]
+
+ranks<-c(3,5,7,9,11,13,15)
+for(j in seq(1:nrow(df)))
+{
+  for(i in ranks)
+  {
+    df[j,i]=as.integer(as.numeric(df[j,i])*100)
+  }
+}
+knitr::kable(df[,seq(1,7)],digits=2,col.names=c('日期','换手率','排名%','持有期','排名%','前十占比%','排名%'))
+knitr::kable(df[,c(1,seq(8,15))],digits=2,col.names=c('日期','行业前5占比%','排名%','平均集中度','排名%','PE','排名%','PB','排名%'))
+```
+
+当然，曹名长的交易风格也并非一成不变的，如上表所示，在基金产品创建初期，又适逢市场环境不好，他也进行过频繁的操作，虽然没有积累较多的正收益，但是跑赢了当期沪深300指数。同时也看到，在新华时期，曹名长投资的股票的PB和PE都高于他最近在中欧管理股票的PB和PE。绝对值的降低，可以由市场估值回归来解释，但是在同类基金中投资股票的平均PB和PE的排名降低，就不得不说这是管理者主动适应市场风格变化的举动了。
+
+## 持仓风格
+
+基于净值数据，我们对曹名长在中欧基金以及新华基金中的四支基金的持仓风格分析如下。
+
+### 中欧价值发现混合A
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+i=1
+  model<-fund_holding_style(fund.codes[i],from=froms[i],to=tos[i],frequency='monthly',style=1,constraint=fund.constraints[i])
+  params<-model$coefficients[model$coefficients>0.0001]
+  facters<-model$factors[model$coefficients>0.0001]
+  
+  formula<-as.data.frame(matrix(params*100,1,length(params)))
+  colnames(formula)<-facters
+  knitr::kable(formula,digits=2,caption='持仓风格权重分析(%)')
+  
+  pie(params,facters)
+
+```
+
+### 中欧潜力价值灵活配置混合
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+i=2
+  model<-fund_holding_style(fund.codes[i],from=froms[i],to=tos[i],frequency='monthly',style=1,constraint=fund.constraints[i])
+  params<-model$coefficients[model$coefficients>0.0001]
+  facters<-model$factors[model$coefficients>0.0001]
+  
+  formula<-as.data.frame(matrix(params*100,1,length(params)))
+  colnames(formula)<-facters
+  knitr::kable(formula,digits=2,caption='持仓风格权重分析(%)')
+  
+  pie(params,facters)
+
+```
+
+可见，其重点投资的股票往往都是价值类型的股票，这与当前的市场风格是吻合的。
+
+
+### 新华钻石品质企业混合
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+i=3
+  model<-fund_holding_style(fund.codes[i],from=froms[i],to=tos[i],frequency='monthly',style=1,constraint=fund.constraints[i])
+  params<-model$coefficients[model$coefficients>0.0001]
+  facters<-model$factors[model$coefficients>0.0001]
+  
+  formula<-as.data.frame(matrix(params*100,1,length(params)))
+  colnames(formula)<-facters
+  knitr::kable(formula,digits=2,caption='持仓风格权重分析(%)')
+  
+  pie(params,facters)
+
+```
+
+```{r,echo=FALSE}
+library(knitr)
+out=knit_expand('../holding-style.rmd')
+```
+`r paste(knit(text=out),collapse='\n')`
+
+### 新华优选分红混合
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+i=4
+  model<-fund_holding_style(fund.codes[i],from=froms[i],to=tos[i],frequency='monthly',style=1,constraint=fund.constraints[i])
+  params<-model$coefficients[model$coefficients>0.0001]
+  facters<-model$factors[model$coefficients>0.0001]
+  
+  formula<-as.data.frame(matrix(params*100,1,length(params)))
+  colnames(formula)<-facters
+  knitr::kable(formula,digits=2,caption='持仓风格权重分析(%)')
+  
+  pie(params,facters)
+
+```
+
+
+这两只基金因为存续于不同的时期，所以其风格并不十分类似。但是总体上，相对于他现在正在管理的基金，更多的投资权重放到了成长类型的股票当中。同时这也反映在持有股票的平均PE较大。这种偏重成长类型的风格实际上也贴合了那一段时期，中国市场偏爱创业板、偏爱成长型题材的市场风格。另外曹名长在中欧基金比较其在新华基金期间，持股的行业集中度和前10大股票集中度都有所降低。
+
+从中可见，*曹名长是一个能够跟随市场风格变化而主动变化的，有学习能力的主动投资者*。
+
+## 主动风格:稳健
+
+我们用行业累计偏离指数代表该基金主动管理的活跃度（在Kacperczyk等的研究中，这个指标又被成为行业集中度）。我们的逻辑根据建立在弱有效市场指数代表了整个市场的“简单”共识，大量的“smart beta”的机会留给了基金管理人，在追寻“smart beta”的过程中，突破原有的行业布局不可避免。而这种突破正可以被行业累计偏离指数来捕捉。但是，主动指数并非越大越好，毕竟市场是弱有效的，完全忽略市场的共识——哪怕是“简单”共识——也是唐吉坷德式的挑战风车。实际上有研究表明，基金业绩表现与Kacperczyk的行业集中度呈现负相关，即行业集中度越大，基金表现越差。我们的分析表明，这种联系在中国市场不是简单照搬的，对于极端的行业集中的情形，确实行业集中度越高，基金平均表现越差，但是在一个温和的区间中，这样的联系是不存在的。当然这个主动指数可以进一步的拓展到对包含基金经理追求alpha
+的描述，这是我们下一步的工作方向之一。
+
+以其管理的中欧价值发现混合A基金为说明，从创建到其接收管理之前，该基金的平均主动管理活跃度为40.25%，呈现非常激进的主动管理态势；其接管基金后平均主动管理活跃度为17.62%，表现为积极但是有限度的主动管理。在其管理的同期，整个基金行业的同类型基金的主动管理活跃指数为27.35%。因此，*对于曹名长的管理风格可以定义为稳健的主动管理型*。所谓“稳健”是指投资者在跟随市场指数配置的基础上，有限度的依据主观判断，适当的超配或者低配某些行业，获取smart beta的管理形态。主动指标$\leq 20\%$，为稳健型。
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+sqlstr = sprintf("select year,quarter,sum(abs(diff_bogey))/2 as active from fund_industry_weight group by code,year,quarter having code='%s' order by year,quarter;",fund.codes[1])
+df=sqldf(sqlstr)
+df_ave=sqldf("select ac.year, ac.quarter,avg(ac.active) as active from (select year,quarter,sum(abs(diff_bogey))/2 as active, type3 from fund_industry_weight group by code,year,quarter,type3 order by year,quarter) as ac group by ac.year,ac.quarter,ac.type3 having ac.type3 like '偏股混合型%' order by ac.year,ac.quarter;")
+```
+
+
+# 能力评价
+
+## 大类资产配置：几乎为零
+
+从下图可以看出，自从2015年11月接手以来，曹名长在产品中欧价值发现混合A中将股票仓位控制在80-95%之间，而另外一个产品中欧潜力价值灵活配置混合股票仓位则也类似的在70%-95%之间变换。
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+sqlstr = sprintf("select year,quarter,equity_weight from fund_allocation_details where code='%s' order by year,quarter",fund.codes[1])
+df=sqldf(sqlstr)
+report_date<-sprintf("%d Q%d",df$year,df$quarter)
+plot(as.yearqtr(report_date),as.numeric(df[,3]),type='l',xlab='时间',ylab='股票仓位(%)',ylim=c(60,95))
+abline(v=as.yearqtr('2015 Q3'),col = "lightgray")
+sqlstr = sprintf("select year,quarter,equity_weight from fund_allocation_details where code='%s' order by year,quarter",fund.codes[2])
+df=sqldf(sqlstr)
+report_date<-sprintf("%d Q%d",df$year,df$quarter)
+lines(as.yearqtr(report_date),as.numeric(df[,3]),type='l',col='red')
+```
+
+由于该两个产品管理时间尚且嫌短，我们继续调查他在新华基金时重点管理的另外两支产品新华钻石品质企业混合和新华优选分红混合。
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+sqlstr = sprintf("select year,quarter,equity_weight from fund_allocation_details where code='%s' and yearqtr(year,quarter)<='%s' order by year,quarter",fund.codes[3],as.yearqtr(as.Date(tos[3])))
+df=sqldf(sqlstr)
+report_date<-sprintf("%d Q%d",df$year,df$quarter)
+plot(as.yearqtr(report_date),as.numeric(df[,3]),type='l',xlab='时间',ylab='股票仓位(%)',ylim=c(60,95))
+abline(v=as.yearqtr('2010 Q1'),col = "lightgray")
+sqlstr = sprintf("select year,quarter,equity_weight from fund_allocation_details where code='%s' order by year,quarter",fund.codes[4])
+df=sqldf(sqlstr)
+report_date<-sprintf("%d Q%d",df$year,df$quarter)
+lines(as.yearqtr(report_date),as.numeric(df[,3]),type='l',col='red')
+```
+
+但是在这两个基金中，他的股票仓位基本都控制在90%左右，并没有显示主动的仓位调节。
+
+进一步的计算大类资产配置带来的超额收益。
+
+### 中欧价值发现混合A
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=TRUE}
+require(scales)
+##need to manually add bogey information
+i=1
+asset_contribution=top_asset_contribution(fund.codes[i],froms[i],tos[i])
+
+return_compare<-data.frame(date=asset_contribution[,2],contribution=asset_contribution[,5]-asset_contribution[,6])
+
+knitr::kable(return_compare,digits=4,caption=paste(fund.names[1],'大类资产配置能力统计',sep=''),col.names=c('日期','大类资产配置超额贡献(%)'))
+```
+```{r,echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=TRUE}
+t=t.test(return_compare$contribution,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献(%)','90%置信区间'),digits=4)
+
+```
+
+统计显示，在中欧价值发现混合A这支基金的管理上，虽然每季度平均取得 0.1% 的配置收益，但是统计意义上并不显著。因此曹名长并没有显示出大类资产配置的能力。
+
+### 中欧潜力价值灵活配置混合
+
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=TRUE}
+require(scales)
+##need to manually add bogey information
+i=2
+  asset_contribution=top_asset_contribution(fund.codes[i],froms[i],tos[i])
+  
+  return_compare<-data.frame(date=asset_contribution[,2],contribution=asset_contribution[,5]-asset_contribution[,6])
+  
+  knitr::kable(return_compare,digits=4,caption=paste(fund.names[1],'大类资产配置能力统计',sep=''),col.names=c('日期','大类资产配置超额贡献(%)'))
+  
+  t=t.test(return_compare$contribution,mu=0,alternative='greater',conf.level=0.9)
+  test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+  knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+
+```
+
+统计显示，在中欧潜力价值灵活配置混合这支基金的管理上，每季度平均取得 -0.99% 的配置收益。因此曹名长并没有显示出大类资产配置的能力。
+
+### 新华钻石品质企业混合
+
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=TRUE}
+require(scales)
+##need to manually add bogey information
+i=3
+  asset_contribution=top_asset_contribution(fund.codes[i],froms[i],tos[i])
+  
+  return_compare<-data.frame(date=asset_contribution[,2],contribution=asset_contribution[,5]-asset_contribution[,6])
+  
+  knitr::kable(return_compare,digits=4,caption=paste(fund.names[1],'大类资产配置能力统计',sep=''),col.names=c('日期','大类资产配置超额贡献(%)'))
+  
+  t=t.test(return_compare$contribution,mu=0,alternative='greater',conf.level=0.9)
+  test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+  knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+
+```
+
+统计显示，在新华钻石品质企业混合这支基金的管理上，虽然每季度平均取得 0.61% 的配置收益，但是统计意义上并不显著。因此无法肯定曹名长大类资产配置的能力。
+
+### 新华优选分红混合
+
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=TRUE}
+require(scales)
+##need to manually add bogey information
+i=4
+  asset_contribution=top_asset_contribution(fund.codes[i],froms[i],tos[i])
+  
+  return_compare<-data.frame(date=asset_contribution[,2],contribution=asset_contribution[,5]-asset_contribution[,6])
+  
+  knitr::kable(return_compare,digits=4,caption=paste(fund.names[1],'大类资产配置能力统计',sep=''),col.names=c('日期','大类资产配置超额贡献(%)'))
+  
+  t=t.test(return_compare$contribution,mu=0,alternative='greater',conf.level=0.9)
+  test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+  knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+
+```
+
+统计显示，在新华优选分红混合这支基金的管理上，虽然每季度平均取得 0.57% 的配置收益，但是统计意义上并不显著。因此无法肯定曹名长的大类资产配置能力。
+
+综上，结合仓位控制上的变化以及专项计算的大类资产配置对于收益的贡献。我们不得不说，虽然曹名长一直以来多管理混合类基金，但是其基金风格任然是传统的股票类基金的风格，在一直以来的基金管理中，没有表现出统计显著的大类资产配置的能力。
+
+在中国市场剧烈的牛熊装换的赌博式的风格下，强求基金管理人做出科学的大类资产配置视乎也不太合理。因为整个股票市场都围绕着“三年不开张，开张吃三年”的氛围，在不能明确预测市场牛熊变化的情况下，选择深度埋伏，重仓位押宝股票市场，似乎也是科学的选择。
+
+## 行业配置能力：弱
+
+既然基金产品的超额收益并非得益于大类资产的配置，那么比如来自与行业配置、选股以及择时的能力。需要提前指出的是，这三个能力在逻辑与实践中都不是相互独立的。好的投资标的往往也意味着好的投资时机，而好股票的挖掘与选择自然也带来了相应行业的配置偏好。但是这三种能力又在某种程度上可以区别开来，因为它们毕竟是在投资的不同决策层面和时点上的投资活动。我们认为：
+
+行为 | 动机 | 度量方法
+-----|------|---------
+行业配置|smart beta | $\sum(w_i-w_i^B)(r_i^B-r^B)$
+择股 | 持续的alpha | $\sum w_{i}(r_{i}^F-r_{i}^B)$
+择时 | 动态的alpha | 未解释的差额部分
+
+因为所获得数据精确程度的不同，我们计算的以上三个方面能力对于总超额收益的贡献比例可能是不精确的，读者应该更多的关注其相对值以及相关的统计推论。
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=1
+df=industry_contribution(code=fund.codes[i],from=froms[i],to=tos[i])
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+a=aggregate(contribution~yearqtr,df,win_ratio)
+b=aggregate(contribution~yearqtr,df,sum)
+a$total<-b$contribution
+a[,2]=a[,2]*100
+knitr::kable(a,digits=2,caption=paste(fund.names[i],'行业配置能力',sep=''),col.names=c('日期','行业配置成功率%','行业配置贡献超额收益率%'))
+t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+
+```
+
+从统计结果可以看出，曹名长在`r fund.names[i]`基金的管理上显示了一定的行业配置能力，平均超额表现为`r test[1,1]`%每半年，年化`r ((1+test[1,1]/100)^4-1)*100`%。
+
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=2
+df=industry_contribution(code=fund.codes[i],from=froms[i],to=tos[i])
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+a=aggregate(contribution~yearqtr,df,win_ratio)
+b=aggregate(contribution~yearqtr,df,sum)
+a$total<-b$contribution
+a[,2]=a[,2]*100
+knitr::kable(a,digits=2,caption=paste(fund.names[i],'行业配置能力',sep=''),col.names=c('日期','行业配置成功率%','行业配置贡献超额收益率%'))
+t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+
+```
+
+从统计结果可以看出，曹名长在`r fund.names[i]`基金的管理上显示了一定的行业配置能力，平均超额表现为`r test[1,1]`%每半年，年化`r ((1+test[1,1]/100)^4-1)*100`%。
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=3
+df=industry_contribution(code=fund.codes[i],from=froms[i],to=tos[i])
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+a=aggregate(contribution~yearqtr,df,win_ratio)
+b=aggregate(contribution~yearqtr,df,sum)
+a$total<-b$contribution
+a[,2]=a[,2]*100
+knitr::kable(a,digits=2,caption=paste(fund.names[i],'行业配置能力',sep=''),col.names=c('日期','行业配置成功率%','行业配置贡献超额收益率%'))
+t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+
+```
+
+从统计结果可以看出，曹名长在`r fund.names[i]`基金的管理上显示了微弱的行业配置能力，平均超额表现为`r test[1,1]`%每半年，年化`r ((1+test[1,1]/100)^4-1)*100`%。
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=4
+df=industry_contribution(code=fund.codes[i],from=froms[i],to=tos[i])
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+a=aggregate(contribution~yearqtr,df,win_ratio)
+b=aggregate(contribution~yearqtr,df,sum)
+a$total<-b$contribution
+a[,2]=a[,2]*100
+knitr::kable(a,digits=2,caption=paste(fund.names[i],'行业配置能力',sep=''),col.names=c('日期','行业配置成功率%','行业配置贡献超额收益率%'))
+t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+
+```
+
+从统计结果可以看出，曹名长在`r fund.names[i]`基金的管理上显示了微弱的行业配置能力，平均超额表现为`r test[1,1]`%每半年，年化`r ((1+test[1,1]/100)^4-1)*100`%。
+
+在曹名长前后管理的这4支主要的基金中，表现出一定的行业配置的能力，但是相应的不确定性大。这与曹名长在交易风格上偏于长线不无关系。
+
+## 择股能力：强！
+
+公开渠道获得的持仓数据频率为每半年一次。我们依据此数据分析基金管理人的择股能力。当然，由于更新频率粗糙，读者有理由担心计算精度的问题。不过从另外一个角度看，我们所谓的择股能力是对照于择时能力而言获取相对持续的alpha的能力。这里的相对持续，完全可以根据我们研究的需要而定义。此处，定义半年为一个相对持续的alpha的标准，也是合情合理的。当前受制于数据不完整，此项能力分析最早只能回溯到2013年。
+
+```{r,echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=1
+df=stock_contribution(code=fund.codes[i],from=max(froms[i],'2013-01-01'),to=tos[i])
+
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+if(ncol(df)>0)
+{
+  a=aggregate(industry_return_algo3-bogey_return~report_date,df,win_ratio)
+  b=aggregate(weight_algo3*(industry_return_algo3-bogey_return)~report_date,df,sum)
+  a$total<-b[,2]
+  a[,2]=a[,2]*100
+  
+  print(knitr::kable(a,digits=2,caption=paste(fund.names[i],'择股能力',sep=''),col.names=c('日期','行业择股成功率%','择股贡献超额收益率%')))
+  t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+  test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+  print(knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2))
+}
+```
+
+
+
+从统计结果可以看出，曹名长在`r fund.names[i]`基金的管理上显示了明显的择股能力——即他能够选择出在未来6个月的投资周期上回报好于对应行业指数表现的股票组合，而且择股能力贡献的平均超额表现高达`r test[1,1]`%每半年,年化`r ((1+test[1,1]/100)^2-1)*100`%。
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=2
+df=stock_contribution(code=fund.codes[i],from=max(froms[i],'2013-01-01'),to=tos[i])
+
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+if(ncol(df)>0)
+{
+  a=aggregate(industry_return_algo3-bogey_return~report_date,df,win_ratio)
+  b=aggregate(weight_algo3*(industry_return_algo3-bogey_return)~report_date,df,sum)
+  a$total<-b[,2]
+  a[,2]=a[,2]*100
+  print(knitr::kable(a,digits=2,caption=paste(fund.names[i],'择股能力',sep=''),col.names=c('日期','行业择股成功率%','择股贡献超额收益率%')))
+  t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+  test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+  print(knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2))
+}
+```
+
+从统计结果可以看出，曹名长在`r fund.names[i]`基金的管理上显示了明显的择股能力——即他能够选择出在未来6个月的投资周期上回报好于对应行业指数表现的股票组合，而且择股能力贡献的平均超额表现高达`r test[1,1]`%每半年,年化`r ((1+test[1,1]/100)^2-1)*100`%。
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=3
+df=stock_contribution(code=fund.codes[i],from=max(froms[i],'2013-01-01'),to=tos[i])
+
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+if(ncol(df)>0)
+{
+  a=aggregate(industry_return_algo3-bogey_return~report_date,df,win_ratio)
+  b=aggregate(weight_algo3*(industry_return_algo3-bogey_return)~report_date,df,sum)
+  a$total<-b[,2]
+  a[,2]=a[,2]*100
+  print(knitr::kable(a,digits=2,caption=paste(fund.names[i],'择股能力',sep=''),col.names=c('日期','行业择股成功率%','择股贡献超额收益率%')))
+  t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+  test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+  print(knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2))
+}
+```
+
+从统计结果可以看出，曹名长在`r fund.names[i]`基金的管理上显示了明显的择股能力——即他能够选择出在未来6个月的投资周期上回报好于对应行业指数表现的股票组合，而且择股能力贡献的平均超额表现高达`r test[1,1]`%每半年,年化`r ((1+test[1,1]/100)^2-1)*100`%。
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=4
+df=stock_contribution(code=fund.codes[i],from=max(froms[i],'2013-01-01'),to=tos[i])
+
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+if(ncol(df)>0)
+{
+  a=aggregate(industry_return_algo3-bogey_return~report_date,df,win_ratio)
+  b=aggregate(weight_algo3*(industry_return_algo3-bogey_return)~report_date,df,sum)
+  a$total<-b[,2]
+  a[,2]=a[,2]*100
+  print(knitr::kable(a,digits=2,caption=paste(fund.names[i],'择股能力',sep=''),col.names=c('日期','行业择股成功率%','择股贡献超额收益率%')))
+  t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+  test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+  print(knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2))
+}
+```
+
+从统计结果可以看出，曹名长在`r fund.names[i]`基金的管理上显示了明显的择股能力——即他能够选择出在未来6个月的投资周期上回报好于对应行业指数表现的股票组合，而且择股能力贡献的平均超额表现高达`r test[1,1]`%每半年,年化`r ((1+test[1,1]/100)^2-1)*100`%。
+
+
+
+## 择时能力：不稳定
+择时能力在本文的设定中包括以下方面：
+
+* 交易周期短于半年的动态alpha机会，如一些短期事件性投资机会、相对明确的业绩反转预期等。
+* 上升通道中的止盈能力
+* 下降通道中的止亏能力
+
+所以择时能力并不总是能够带来正的超额收益，但是它能够确保落袋为安（止盈能力）或者保命再战（止亏能力），对于提高基金的风险收益比（如夏普率）是十分重要的。
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=1
+df=timing_contribution(fund.codes[i],from=max(froms[i],'2013-01-01'),to=tos[i])
+print(knitr::kable(df,digits=2,caption=paste(fund.names[i],'择时能力',sep=''),col.names=c('日期','择时能力贡献超额收益率%')))
+t=t.test(df[,2],mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+print(knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2))
+```
+
+从上表中可以看出，曹名长在`r fund.names[i]`基金的管理上显示了明显的择时能力，而且择时能力贡献的平均超额表现高达`r test[1,1]`%每半年,年化`r ((1+test[1,1]/100)^2-1)*100`%。但是，也要注意到择时能力的表现十分不问题，致使无法对其贡献的正负做统计判断。
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=2
+df=timing_contribution(fund.codes[i],from=max(froms[i],'2013-01-01'),to=tos[i])
+print(knitr::kable(df,digits=2,caption=paste(fund.names[i],'择时能力',sep=''),col.names=c('日期','择时能力贡献超额收益率%')))
+t=t.test(df[,2],mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+print(knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2))
+```
+
+从上表中可以看出，曹名长在`r fund.names[i]`基金的管理上显示了明显的择时能力，而且择时能力贡献的平均超额表现高达`r test[1,1]`%每半年,年化`r ((1+test[1,1]/100)^2-1)*100`%。与上一只基金中的表现一样，择时能力的贡献不稳定，难以做出肯定的统计判断。
+
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=3
+df=timing_contribution(fund.codes[i],from=max(froms[i],'2013-01-01'),to=tos[i])
+print(knitr::kable(df,digits=2,caption=paste(fund.names[i],'择时能力',sep=''),col.names=c('日期','择时能力贡献超额收益率%')))
+t=t.test(df[,2],mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+print(knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2))
+```
+
+从上表中可以看出，曹名长在`r fund.names[i]`基金的管理上显示了不太显著的的择时能力，而且择时能力贡献的平均超额表现为`r test[1,1]`%每半年,年化`r ((1+test[1,1]/100)^2-1)*100`%。
+
+
+```{r, echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=4
+df=timing_contribution(fund.codes[i],from=max(froms[i],'2013-01-01'),to=tos[i])
+print(knitr::kable(df,digits=2,caption=paste(fund.names[i],'择时能力',sep=''),col.names=c('日期','择时能力贡献超额收益率%')))
+t=t.test(df[,2],mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+print(knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2))
+```
+
+从上表中可以看出，曹名长在`r fund.names[i]`基金的管理上显示了不显著的择时能力，而且择时能力贡献的平均超额表现为`r test[1,1]`%每半年,年化`r ((1+test[1,1]/100)^2-1)*100`%，并不突出同时波动不小。
+
+
+综上，我们认为曹名长作为一名偏好长线操作的价值投资者，他在择时能力上的表现不算亮眼。追涨杀跌或者有预判性的止盈止损来获取短时的收益最大化不是他所擅长的。
+
+
+
+
+# 投资方法体系
+
+## 择股三段论
+
+\begin{itemize}
+\item 初选，来源：
+\begin{itemize}
+  \item 不定期的考察投资标的估值，低估值列为初选；
+  \item 上市公司中报、年报时，分析相关财务指标，如净利润增长、率盈利收益率、经营现金流收益率、股息收益率、营业利润率等；
+  \item 研究员推荐。
+  \end{itemize}
+\item 基本面分析，考察年报、招股说明书、中报等，解决几个问题：
+\begin{itemize}
+  \item 公司过去是否优秀；
+  \item 公司未来是否有成长性、布局战略是否合理。
+\end{itemize}
+\item 行业分析：是否优势行业，公司在行业中是否龙头，行业所处的阶段。
+\end{itemize}
+
+最后去算估值，确定什么价格买会有比较高的性价比。
+
+* 比较股票价格与内在价值的差距，判断拟投资个股是否存在较大幅度的安全边际；
+* 分析可比公司之间的相对估值，而非绝对估值。相对估值法主要根据股票的市场估价比率与全市场或者同行业/板块其他公司的估值比率对比来衡量 个股估值的相对高低。其中估值比率包括市盈率法(P/E)、市净率法(P/B)、市销 率法(P/S)、经济价值法(EV/EBITDA)等;
+* 通过深入分析公司的业绩增长潜力，以发展的眼光对企业进行动态估值，比较拟投资股票的静态估值和动态估值，判断不同时点估值的合理性； 
+* 研究团队的深入细致调研是分析股票是否具备相对价值的基础，这有助于判断公司的价值驱动因素、资产增值潜力、潜在风险等。
+
+
+
+## 风控方法：分散
+
+* 中庸的大类资产配置（偏重股票）。
+* 参考沪深300或者中证500进行行业配置，不做大幅度的偏离。
+* 缓慢渐进的加仓、减仓反复验证投资思路，长线持有但不试图赚取个股上所有的收益。
+
+# 评价
+曹名长是资深的价值型的基金管理人。我们基于公开信息，进行深度的科学分析，结合与其面对面的交流，做出如下评判：
+
+1. 曹名长的低换手、长持有、分散持股的交易风格，和长期坚持价值投资为主兼顾成长性的投资风格，经历了牛市熊市反复的检验；
+2. 曹名长作为一名混合基金管理人，长期大权重投资与股票市场，没有表现出大类资产配置的能力；
+3. 作为一名“自下而上”的投资人，把中观的行业层面融入到择股决策中，因而体现出了一定的行业配置能力；
+4. 作为长期投资选手，择时能力并不是追寻的投资回报的主要手段，因而其投资表现中择时能力的表现不稳定，虽整体为正，但是也有较大负数的情形；
+5. 作为典型的价值投资者，择股能力是最为重要的盈利手段，曹名长在该项目上表现了持续有效的能力。
+
+因此，曹名长是适合长期投资的、股票领域内的、稳健偏保守的基金管理人。

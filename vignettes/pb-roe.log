@@ -1,9 +1,9 @@
-This is XeTeX, Version 3.14159265-2.6-0.99992 (TeX Live 2015/Debian) (preloaded format=xelatex 2017.5.9)  14 AUG 2017 13:48
+This is XeTeX, Version 3.14159265-2.6-0.99992 (TeX Live 2015/Debian) (preloaded format=xelatex 2017.8.23)  17 SEP 2017 22:01
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**/tmp/RtmplGPJIe/preview-cc958eaa431.dir/pb-roe.tex
-(/tmp/RtmplGPJIe/preview-cc958eaa431.dir/pb-roe.tex
+**/tmp/Rtmp4VnQie/preview-340e13ad35b5.dir/pb-roe.tex
+(/tmp/Rtmp4VnQie/preview-340e13ad35b5.dir/pb-roe.tex
 LaTeX2e <2016/02/01>
 Babel <3.9q> and hyphenation patterns for 81 language(s) loaded.
 (/usr/share/texlive/texmf-dist/tex/latex/tufte-latex/tufte-book.cls
@@ -1954,16 +1954,16 @@ Package hyperref Warning: The anchor of a bookmark and its parent's must not
 LaTeX Font Info:    Font shape `EU1/lmtt/bx/n' in size <10.53937> not available
 
 (Font)              Font shape `EU1/lmtt/b/n' tried instead on input line 151.
-File: /tmp/RtmplGPJIe/preview-cc958eaa431.dir/pb-roe_files/figure-latex/fig-mar
-gin-1.pdf Graphic file (type QTm)
+File: /tmp/Rtmp4VnQie/preview-340e13ad35b5.dir/pb-roe_files/figure-latex/fig-ma
+rgin-1.pdf Graphic file (type QTm)
 
-<use  "/tmp/RtmplGPJIe/preview-cc958eaa431.dir/pb-roe_files/figure-latex/fig-ma
-rgin-1.pdf" > [7]
-File: /tmp/RtmplGPJIe/preview-cc958eaa431.dir/pb-roe_files/figure-latex/fig-ful
-lwidth-1.pdf Graphic file (type QTm)
+<use  "/tmp/Rtmp4VnQie/preview-340e13ad35b5.dir/pb-roe_files/figure-latex/fig-m
+argin-1.pdf" > [7]
+File: /tmp/Rtmp4VnQie/preview-340e13ad35b5.dir/pb-roe_files/figure-latex/fig-fu
+llwidth-1.pdf Graphic file (type QTm)
 
-<use  "/tmp/RtmplGPJIe/preview-cc958eaa431.dir/pb-roe_files/figure-latex/fig-fu
-llwidth-1.pdf" >
+<use  "/tmp/Rtmp4VnQie/preview-340e13ad35b5.dir/pb-roe_files/figure-latex/fig-f
+ullwidth-1.pdf" >
 Underfull \hbox (badness 10000) in paragraph at lines 199--200
 [][]
  []
@@ -1973,11 +1973,11 @@ Underfull \hbox (badness 10000) in paragraph at lines 199--200
 
  []
 
-File: /tmp/RtmplGPJIe/preview-cc958eaa431.dir/pb-roe_files/figure-latex/fig-mai
-n-1.pdf Graphic file (type QTm)
+File: /tmp/Rtmp4VnQie/preview-340e13ad35b5.dir/pb-roe_files/figure-latex/fig-ma
+in-1.pdf Graphic file (type QTm)
 
-<use  "/tmp/RtmplGPJIe/preview-cc958eaa431.dir/pb-roe_files/figure-latex/fig-ma
-in-1.pdf" >
+<use  "/tmp/Rtmp4VnQie/preview-340e13ad35b5.dir/pb-roe_files/figure-latex/fig-m
+ain-1.pdf" >
 Underfull \hbox (badness 10000) in paragraph at lines 215--216
 
  []
@@ -2023,11 +2023,11 @@ Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 300.
  ) 
 Here is how much of TeX's memory you used:
  30933 strings out of 493638
- 581992 string characters out of 6146797
- 645790 words of memory out of 5000000
+ 581999 string characters out of 6146796
+ 645789 words of memory out of 5000000
  33906 multiletter control sequences out of 15000+600000
  9128 words of font info for 74 fonts, out of 8000000 for 9000
  1328 hyphenation exceptions out of 8191
- 67i,11n,123p,10441b,424s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 67i,11n,123p,10442b,424s stack positions out of 5000i,500n,10000p,200000b,80000s
 
 Output written on pb-roe.pdf (23 pages).

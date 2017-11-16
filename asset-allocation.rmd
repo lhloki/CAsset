@@ -1,0 +1,64 @@
+
+### `r fund.names[i]`资产配置表现
+
+
+```{r, echo=FALSE,cache=TRUE, fig.width=10, message=FALSE, warning=FALSE, render=TRUE}
+require(scales)
+##need to manually add bogey information
+
+asset_contribution=top_asset_contribution(fund.codes[i],froms[i],tos[i])
+
+return_compare<-data.frame(date=asset_contribution[,2],contribution=asset_contribution[,5]-asset_contribution[,6])
+
+knitr::kable(return_compare,digits=4,caption=paste(fund.names[1],'大类资产配置能力统计',sep=''),col.names=c('日期','大类资产配置超额贡献(%)'))
+```
+```{r,echo=FALSE, fig.width=10, message=FALSE, warning=FALSE, render=TRUE}
+t=t.test(return_compare$contribution,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献(%)','90%置信区间'),digits=4)
+if(test[1,1]>2)
+{
+  pon = '超乎寻常'
+}else
+  {
+    if(test[1,1]>1)
+    {
+      pon='优异'
+    }
+    else
+    {
+      if(test[1,1]>0)
+        pon = '正'
+      else
+      { 
+        if(test[1,1]>-1)
+          pon = '负'
+        else
+          pon ='糟糕'
+      }
+    }
+  }
+ratio=as.numeric(t$estimate)/(as.numeric(t$estimate)-t$conf.int[1])
+if(ratio>1)
+{
+  sig<-'而且是统计显著的正的资产配置能力'
+}else
+  {
+    if(ratio>0.5)
+    {
+      sig<-'虽然统计不显著，但是在复杂多变的市场情况下，还是可以认为管理者展现了一定的资产配置能力'
+    }else
+      {
+        if(ratio>-0.2)
+        {
+          sig<-'几乎没有显示出大类资产配置的能力'
+        }else
+        {
+          sig<-'资产错配'
+        }
+    }
+  }
+
+```
+
+统计显示，在`r fund.names[i]`这支基金的管理上，每季度平均取得 `r test[1,1]`%的`r pon`的配置收益，`r sig`。

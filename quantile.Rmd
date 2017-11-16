@@ -1,0 +1,104 @@
+
+---
+layout: post
+title: "Quantile Is Better?"
+author: Hai Lan
+date: 2017-09-01
+categories: data
+tags: [投资,R]
+use_math: true
+comments: true
+output: github_document
+---
+
+在金融实践中，我们经常需要建立一些指标来帮助我们做出判断。但是随着时间的变化、市场的演进，我们会积累大量的数据。处理与解读数据从来都不是一项轻松的时期。少许可以让我们放松的是，我们积累了大量的统计工具来进行这样的工作。而且实践当中，简单的描述性的统计，就能够帮助我们分析与理解大多数的数据。描述性统计中，均值、方差等等是最为常见的。本文中，我想提醒大家注意的是，描述性统计中一个容易忽略的方法：分位数（quantile）。实际上，均值比较容易收到一些极端值的影响，50%的分位数，即中位数相对应更为鲁邦。配合其他尾部分位数，这样的描述性统计往往能够揭示很多被均值掩盖了的真相。以下，我们以PB的解读分析为例子来说明。
+
+
+## PB的历史演进：Quantile
+
+PB=market price/ book value，它勾结了股票市场上的两个信号：
+
+* Price（价格）：这是个在市场上只要交易就变化着的快信号；
+* Book (会计价值)：这是由会计师依据的会计准则为投资者记录的企业的账面价值，它是由企业的历史活动累积的、会计师周期性更新的慢信号。
+
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE,fig.width=11,fig.cap='PB全市场历史统计'}
+require(CAsset)
+require(PerformanceAnalytics)
+require(ggplot2)
+require(reshape2)
+init()
+options(digits=2)
+pdf.options(family = "GB1")
+```
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE,cache=TRUE,fig.width=11,fig.cap='PB全市场历史统计'}
+df=sqldf("select date_trunc('month',all_date),quantile(pb,0.05) as lower,quantile(pb,0.5) as median,quantile(pb,0.95) as upper from stock_finance_weight_with_fill_eastmoney where all_date>'2003-01-01' group by date_trunc('month',all_date)")
+ggplot(df,aes(x=date_trunc,y=median))+geom_ribbon(aes(ymin=lower,ymax=upper),fill='grey70')+geom_line(col='red')
+#df=sqldf("select date_trunc('month',date),pb from stock_finance where date>'2003-01-01' and pb is not null and pb<50")
+#ggplot(df,aes(x=date_trunc,group=date_trunc,y=pb))+geom_boxplot()
+```
+阴影部分是同期市场上所有股票一月之间的PB值的5%至95%。而红色的线则代表这些PB数值的中位数。不难理解2007年和2015年市场泡沫期间，市场对于股票价格整个的高估，表现在PB值无论是低5%、高的95%还是中位数都整体上扬，伴随市场指数攀顶而到达顶点。更进一步的，如果勾画每个季度市场PB值的概率密度函数，我们也能发现相似的结果。
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE,cache=TRUE,fig.width=11,fig.cap='PB全市场历史分布'}
+
+df=sqldf("select date_trunc('quarter',all_date),pb from stock_finance_weight_with_fill_eastmoney where all_date>'2003-01-01' and pb is not null and pb<20")
+ggplot(df,aes(x=date_trunc,group=date_trunc,y=pb))+geom_violin()
+
+```
+
+上图中，我们勾画了每个季度PB值分布的概率密度函数的大致形状与变化，从中可以看出从2007年以来PB的分布基本是单峰的。2010年市场PB值的分布与2007年市场泡沫时候是类似的，这与我们从5%、95%以及中位数曲线上看到的结果是一致的。
+
+有意思的是，2011年的PB估值水平又一次上升到一个几乎与2007年相似的高峰——尽管指数恢复的情况远未能达到前期泡沫时水平，但是PB值却十分接近泡沫时的高点。以上现象可以用股票价格的恢复来解释吗？ 
+我们看同一时期，沪深300的形态是：
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE,cache=TRUE,fig.width=11,fig.cap='沪深300历史趋势'}
+hs300=sqldf("select date,close as price from index_ohlc_day where code='000300' and date>'2003-01-01' ")
+ggplot(hs300,aes(x=date,y=price))+geom_line(col='blue')
+```
+
+显然，股票价格是能够部分解释PB的上扬，但是不能解释为什么PB上涨远远超出价格恢复的幅度，而几乎接近泡沫时期的高点。那么是由于每股账面价值（book price per share）恶化的结果吗？
+
+同一时期，上市公司每股账面价值的变化是：
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE,cache=TRUE,fig.width=11,fig.cap='Bps全市场历史统计'}
+df=sqldf("select date_trunc('month',all_date),quantile(bps,0.05) as lower,quantile(bps,0.5) as median,quantile(bps,0.95) as upper from stock_finance_weight_with_fill_eastmoney where all_date>'2003-01-01' group by date_trunc('month',all_date)")
+ggplot(df,aes(x=date_trunc,y=median))+geom_ribbon(aes(ymin=lower,ymax=upper),fill='grey70')+geom_line(col='red')
+```
+
+
+整体上，公司每股账面价值呈现温和上升的趋势———随着中国经济的发展，企业在不断的创造和积累价值，当然这个过程中也伴随有部分企业拆股、送股等行为对企业每股账目价值的稀释作用。但是，无论如何，每股账面价值的变化不能解释价格泡沫过后出现的PB“估值泡沫”的发生\footnote{我们姑且把这一现象称之为“泡沫”。}。我们需要进一步的分析PB变化的原因。
+
+查阅同期的经济政策，不难注意到同期进行4万亿货币放水。获利于大量投资资源类型股票大幅升值，获利与货币宽松，房地产价格飙升，地产股以及相关的周期性股票获益，伴随着货币宽松向股市等虚拟经济扩散，一些弹性较大的中小盘股也枉顾经济基本面而节节攀升。实际上，这是不亚于2007年的资本的狂欢，之所以没有显示在沪深300的指数大幅度的上升（相比较于2007年）是由于当时主要要获益的股票不是沪深300针对的大盘股，而是一些中小盘、周期性、资源型股票。
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE,cache=TRUE,fig.width=11,fig.cap='各类股票收益历史趋势'}
+
+df<-getPriceFromDB(stock_indexes[,1],from='2003-01-01',asset.names=stock_indexes[,2],join.method='left outer')
+melted = melt(df,id.vars=c(1))
+ggplot(melted,aes(x=date,y=value,colour=variable))+geom_line()+annotate('rect',xmin=as.Date('2009-01-01'),xmax=as.Date('2011-03-01'),ymin=0,ymax=15000,alpha=0.1,fill="blue")+annotate('text',x=as.Date('2010-01-01'),y=16000,size=4,label='4万亿货币泡沫')
+```
+
+从上图可以看到，中小板块在2011年左右超越2007年，创造了新高。这合理地解释了2011年出现PB估值高点的原因。由此可见，PB值的中位数以及5%和95%的数值带确实能够揭示一些有趣的东西。而这些东西可能会被单一的指数所忽略。
+
+## PB的历史演进：均值
+
+那么市场上常常使用的均值系统用来表征PB信息是否也是有效的呢？市场经常讨论、关注的是PB值的资金加权算术平均，它代表的是市场整体上愿意为上市公司的账目资产支付的价格。考虑到中国股市的特殊性，流通股数的加权平均是首选、其次才是总股数的加权平均。毕竟非流通股，没有实际上的资金消耗需求，因而不能实在的反应市场所给出估值需要付出的代价。
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE,cache=TRUE,fig.width=11,fig.cap='流通权重PB均值全市场历史统计'}
+df=sqldf("with x as (select all_date, sum(pb*\"OA\")/sum(\"OA\") as \"PB\" from stock_finance_weight_with_fill_eastmoney where all_date>'2005-01-01' and pb is not null group by all_date having count(*)>100 order by all_date) select date_trunc('month',all_date) as date, avg(\"PB\") as \"PB\" from x group by date_trunc('month',all_date) ;")
+dfa=sqldf("with x as (select all_date, sum(bps*\"OA\")/sum(\"OA\") as \"Bps\" from stock_finance_weight_with_fill_eastmoney where all_date>'2005-01-01' and bps is not null group by all_date having count(*)>100 order by all_date) select date_trunc('month',all_date) as date, avg(\"Bps\") as \"Bps\" from x group by date_trunc('month',all_date) ;")
+dfb=sqldf("with x as (select all_date, sum(price*\"OA\")/sum(\"OA\") as \"price\" from stock_finance_weight_with_fill_eastmoney where all_date>'2005-01-01' and price is not null group by all_date having count(*)>100 order by all_date) select date_trunc('month',all_date) as date, avg(\"price\") as \"price\" from x group by date_trunc('month',all_date) ;")
+#dfc=sqldf("with x as (select date, count(pb) as \"num_pb\" from stock_finance_weight_eastmoney where date>'2005-01-01' and pb is not null group by date having count(*)>100 order by date) select date_trunc('month',date) as date, avg(\"num_pb\") as \"num_pb\" from x group by date_trunc('month',date) ;")
+df=merge(df,dfa,by='date')
+df=merge(df,dfb,by='date')
+
+melted = melt(df,id.vars=1)
+ggplot(melted,aes(x=date,y=value,colour=variable))+geom_line()
+#df=sqldf("select date_trunc('month',date),pb from stock_finance where date>'2003-01-01' and pb is not null and pb<50")
+#ggplot(df,aes(x=date_trunc,group=date_trunc,y=pb))+geom_boxplot()
+```
+从上图可以看出加权平均系统的一些缺陷：
+1. 无论是平均价格（price）还是平均估值水平（PB）都没有显示2010年左右的中小盘牛市，原因是中小盘在加权平均中所占比重较小。
+2. 2016年末至今的漂亮50行情，在平均价格（price）上的反映低于平均估值水平（PB）上的。这种反映在平均价格和平均估值上的波动水平的不一致，在历史上2010年左右也是有体现的。原因是这两次行情都不是全市场的，2010年的行情属于中小板块，此次的行情属于大盘价值股（漂亮50）。因为这些子板块在不同的均值中表现出的影响力是不一样的，所以才出现了平均价格与平均估值的波动幅度不一致的现象。
+
+整体上来讲，在很多金融指标中分位数（quantile）是好于均值系统（mean）的统计方法。

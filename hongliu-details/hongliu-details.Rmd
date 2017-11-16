@@ -1,0 +1,445 @@
+---
+title: "分析洪流-技术报告"
+author:
+  - 蓝海
+  - 彭莉
+documentclass: ctexart
+output:
+  rticles::fund_analysis:
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+classoption: "hyperref,"
+---
+
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE}
+require(CAsset)
+require(PerformanceAnalytics)
+init()
+options(digits=2)
+pdf.options(family = "GB1")
+manager='洪流'
+fund.codes=c('000824','001736')
+fund.names=c('圆信永丰双红利A','圆信永丰优加生活')
+froms=c('2014-11-19','2015-10-28')
+tos=c(as.character(Sys.Date()),as.character(Sys.Date()))
+fund.constraints=list(list(stock=c(0,0.95),bond=c(0,0.95),cash=0.05),list(stock=c(0.8,0.95),bond=c(0,0.15),cash=0.05))
+```
+
+# 业绩表现
+
+
+## `r manager`
+
+  上海财经大学金融学硕士,现任圆信永丰基金管理有限公司首席投资官。历任新疆金新信托证券管理总部信息研究部经理,德恒证券信息研究部副总经理,德恒证券经纪业务管理总部副总经理,兴业证券股份有限公司理财服务中心首席理财分析师,兴业证券股份有限公司上海资产管理分公司副总监。
+
+  `r manager`有丰富的资管经验，在公墓基金方面共管理4个不同的基金产品，其中有增强性债券基金和创设不足一年的混合型基金，我们不做为分析的样本。本文采用的样本是：`r fund.names[1]`和`r fund.names[2]`。
+
+## 当前表现
+
+### `r fund.names[1]`
+```{r, echo=FALSE,cache=TRUE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11,fig.cap='基金累计回报率与回撤'}
+funds=getFunds(codes=fund.codes[1],fund.names=fund.names[1],from=froms[1])
+data(asset_top_daily)
+hs300<-getReturnFromDB('000300',from=(as.Date(froms[1])))
+colnames(hs300)<-'沪深300'
+funds = merge(funds,hs300,join='left')
+charts.PerformanceSummary(funds,event.labels=c('管理基金'),event.lines=froms[c(1)])
+knitr::kable(fund.performance(funds),digits=2,col.names=c('名称','近半年','夏普率','近一年','夏普率','两年','夏普率','三年','夏普率'))
+```
+
+```{r, echo=FALSE,cache=TRUE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11,fig.cap='投资者收益风险比较'}
+fund.performance(funds,flag=3)
+```
+
+图1清楚的表明自`r manager`在管理该支基金以来相对于沪深300其累计收益率的不俗表现，尤其是在2015年股灾期间，除了第一次大跌外，在股市二次三次探底的过程中，`r fund.names[1]`都较好的控制住了回撤。图2明确的表明，固定一年期的投资者，无论何时买入这两只基金，她都可以获得相比沪深300更高的累计收益，而且面临的波动与沪深300基本相当。因此日收益序列的风险收益比——夏普率——显著高于沪深300。通俗的说，就是不但能够赚更多的钱，而且作为投资者，你还更有可能“拿得住”这样的投资对象，因为收益波动比更大。当然也要注意到该基金的一年期投资收益越来越接近沪深300。
+
+### `r fund.names[2]`
+
+```{r, echo=FALSE,cache=TRUE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11,fig.cap='基金累计回报率与回撤'}
+funds=getFunds(codes=fund.codes[2],fund.names=fund.names[2],from=froms[2])
+data(asset_top_daily)
+hs300<-getReturnFromDB('000300',from=(as.Date(froms[2])))
+colnames(hs300)<-'沪深300'
+funds = merge(funds,hs300,join='left')
+charts.PerformanceSummary(funds,event.labels=c('管理基金'),event.lines=froms[c(2)])
+knitr::kable(fund.performance(funds)[,c(-5,-6)],digits=2,col.names=c('名称','近半年','夏普率','近一年','夏普率','近两年','夏普率'))
+```
+
+这支基金最当引起注意的是回撤控制的力度，整个基金的累计收益率几乎像是缓步爬山一样的一个阶段一个阶段的稳定向上。同期虽然相比沪深300超额收益不大，但是风险少了许多，获取了很高的夏普率。
+```{r, echo=FALSE,cache=TRUE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11,fig.cap='投资者收益风险比较'}
+fund.performance(funds,flag=3)
+```
+
+
+
+# 风格分析
+
+## 交易风格
+
+基于公开信息，我们对`r manager`的正在管理的`r fund.names[1]`的交易风格分析如下：
+```{r, echo=FALSE,cache=TRUE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+df=fund.style(code=fund.codes[1],from=froms[1],to=tos[1])
+df=df[,c(-1,-2)]
+
+ranks<-c(3,5,7,9,11,13,15)
+for(j in seq(1:nrow(df)))
+{
+  for(i in ranks)
+  {
+    df[j,i]=as.integer(as.numeric(df[j,i])*100)
+  }
+}
+knitr::kable(df[,seq(1,7)],digits=2,col.names=c('日期','换手率','排名%','持有期','排名%','前十占比%','排名%'))
+knitr::kable(df[,c(1,seq(8,15))],digits=2,col.names=c('日期','行业前5占比%','排名%','平均集中度','排名%','PE','排名%','PB','排名%'))
+```
+
+换手率略高而持有期处于中间偏下。持股的平均PE和PB都在平均水平之下。从以上表格中可以看出 *`r manager`，除了低的PB和PE暗示他的价值投资者身份外，在持股集中度，换手率等方面都是“中庸”型的*。
+
+同样的对于`r fund.names[2]`进行交易风格分析，我们也发现了相似的情况。数据如下：
+```{r, echo=FALSE,cache=TRUE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+df=fund.style(code=fund.codes[2],from=froms[2],to=tos[2])
+df=df[,c(-1,-2)]
+
+ranks<-c(3,5,7,9,11,13,15)
+for(j in seq(1:nrow(df)))
+{
+  for(i in ranks)
+  {
+    df[j,i]=as.integer(as.numeric(df[j,i])*100)
+  }
+}
+knitr::kable(df[,seq(1,7)],digits=2,col.names=c('日期','换手率','排名%','持有期','排名%','前十占比%','排名%'))
+knitr::kable(df[,c(1,seq(8,15))],digits=2,col.names=c('日期','行业前5占比%','排名%','平均集中度','排名%','PE','排名%','PB','排名%'))
+```
+
+需要进一步解释的是为什么2015 Q4显示的风格与其他时段不一致。这是因为基金刚刚创建，甚至仓位可能都还没有加满，一切都还在动态调整中。
+
+
+
+## 持仓风格
+
+基于净值数据，我们对`r manager`的持仓风格分析如下。
+
+### `r fund.names[1]`
+
+```{r, echo=FALSE,cache=TRUE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+i=1
+  model<-fund_holding_style(fund.codes[i],from=froms[i],to=tos[i],frequency='monthly',style=1,constraint=fund.constraints[[i]])
+  params<-model$coefficients[model$coefficients>0.0001]
+  facters<-model$factors[model$coefficients>0.0001]
+  
+  formula<-as.data.frame(matrix(params*100,1,length(params)))
+  colnames(formula)<-facters
+  knitr::kable(formula,digits=2,caption='持仓风格权重分析(%)')
+  
+  pie(params,facters)
+
+```
+
+虽然我们的风格分析是基于净值数据的，但是经过比较持仓数据，结果还是相当准确的。尽管江湖传说作为徐京德的门徒，`r manager`应该是价值投资者，但事实是他应该是成长价值投资者\footnote{在此，我们讨论一下中国当前语境下的价值股和成长股投资。实际上投资这两种类型股票的投资这都应该是广义上的价值投资者，他们都是基于对于投资标的的价值判断做出的投资。区别是，价值股强调过去和当前的业绩显示出实实在在的投资价值，成长股则强调成长性，而且往往应为成长性有了一定的估值溢价。而这种基于未来不确定的成长性的估值溢价就为这类型的股票带来更多的不确定性和某种形式的周期性。因此投资这两类股票的价值投资者往往在风格上呈现足够的差异。久而久之，渐渐成为两个不同“流派”。所以成熟的投资者，不会拘泥与价值成长的区别，说白了，都是价值投资，都是在衡量价格与看得见的现在和看不见的未来之间匹配关系。不过，我们还是根据习惯，将他投资的两个属性合在一起表征他的投资风格。}。
+
+### `r fund.names[2]`
+
+```{r, echo=FALSE,cache=TRUE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+i=2
+  model<-fund_holding_style(fund.codes[i],from='2016-03-01',to=tos[i],frequency='monthly',style=1,constraint=fund.constraints[[i]]) #基金封闭期采集的return数据有问题，不可带入计算，也不太好人工估计Return，故而抛弃这段数据
+  params<-model$coefficients[model$coefficients>0.0001]
+  facters<-model$factors[model$coefficients>0.0001]
+  
+  formula<-as.data.frame(matrix(params*100,1,length(params)))
+  colnames(formula)<-facters
+  knitr::kable(formula,digits=2,caption='持仓风格权重分析(%)')
+  
+  pie(params,facters)
+
+```
+
+该基金是关注于“健康”和“生活”相关的主题型的基金。“健康”类别里头多有中盘成长股，“生活”相关常见价值股。出现这样的持股风格并不奇怪。这也表明，*作为整个基金公司的投资总监，`r manager`能够和他的基金经理一起驾驭不同类型的投资风格。* 管理一只基金也许一个鲜明的风格就可以了，但是管理一家基金公司，一定要能够兼容并蓄，因为谁也不知道那棵树上能结果子。
+
+
+
+## 主动风格:积极
+
+
+以其管理的`r fund.names[1]`基金来看，该基金的平均主动管理活跃度为24%。在其管理的同期，整个基金行业的同类型基金的主动管理活跃指数为27%。
+另一支基金`r fund.names[2]`平均主动管理活跃度为25%。在其管理的同期，整个基金行业的同类型基金的主动管理活跃指数为27%。
+因此，*对于`r manager`的管理风格可以定义为中庸的主动管理型*。
+
+```{r, echo=FALSE,cache=TRUE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+sqlstr = sprintf("select year,quarter,sum(abs(diff_bogey))/2 as active from fund_industry_weight group by code,year,quarter having code='%s' order by year,quarter;",fund.codes[1])
+df=sqldf(sqlstr)
+df_ave=sqldf("select ac.year, ac.quarter,avg(ac.active) as active from (select year,quarter,sum(abs(diff_bogey))/2 as active, type3 from fund_industry_weight group by code,year,quarter,type3 order by year,quarter) as ac group by ac.year,ac.quarter,ac.type3 having ac.type3 like '普通股票%' order by ac.year,ac.quarter;")
+```
+
+
+# 能力评价
+
+## 大类资产配置：几乎为零
+
+从下图可以看出，自从2014年11月以来，`r manager`在产品`r fund.names[1]`中将股票仓位控制在75-90%之间，而另外一个产品`r fund.names[2]`股票仓位则也类似的在80%-85%之间变换。
+
+```{r, echo=FALSE,cache=TRUE, message=FALSE, warning=FALSE, render=TRUE,fig.width=11}
+sqlstr = sprintf("select year,quarter,equity_weight from fund_allocation_details where code='%s' order by year,quarter",fund.codes[1])
+df=sqldf(sqlstr)
+report_date<-sprintf("%d Q%d",df$year,df$quarter)
+plot(as.yearqtr(report_date),as.numeric(df[,3]),type='l',xlab='时间',ylab='股票仓位(%)',ylim=c(60,95))
+abline(v=as.yearqtr('2016 Q1'),col = "lightgray")
+sqlstr = sprintf("select year,quarter,equity_weight from fund_allocation_details where code='%s' order by year,quarter",fund.codes[2])
+df=sqldf(sqlstr)
+report_date<-sprintf("%d Q%d",df$year,df$quarter)
+lines(as.yearqtr(report_date),as.numeric(df[,3]),type='l',col='red')
+```
+
+
+
+进一步的计算大类资产配置带来的超额收益。
+
+### `r fund.names[1]`
+
+```{r, echo=FALSE,cache=TRUE, fig.width=11, message=FALSE, warning=FALSE, render=TRUE}
+require(scales)
+##need to manually add bogey information
+i=1
+froms[i]='2015-01-01'
+asset_contribution=top_asset_contribution(fund.codes[i],froms[i],tos[i])
+
+return_compare<-data.frame(date=asset_contribution[,2],contribution=asset_contribution[,5]-asset_contribution[,6])
+
+knitr::kable(return_compare,digits=4,caption=paste(fund.names[1],'大类资产配置能力统计',sep=''),col.names=c('日期','大类资产配置超额贡献(%)'))
+```
+```{r,echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=TRUE}
+t=t.test(return_compare$contribution,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献(%)','90%置信区间'),digits=4)
+
+```
+
+统计显示，在`r fund.names[1]`这支基金的管理上，每季度平均取得 `r test[1]`% 的配置收益。因此`r manager`并没有显示出大类资产配置的能力。
+
+
+
+### `r fund.names[2]`
+
+
+```{r, echo=FALSE,cache=TRUE, fig.width=11, message=FALSE, warning=FALSE, render=TRUE}
+require(scales)
+##need to manually add bogey information
+i=2
+froms[i]='2016-01-01'
+  asset_contribution=top_asset_contribution(fund.codes[i],froms[i],tos[i])
+  
+  return_compare<-data.frame(date=asset_contribution[,2],contribution=asset_contribution[,5]-asset_contribution[,6])
+  
+  knitr::kable(return_compare,digits=4,caption=paste(fund.names[1],'大类资产配置能力统计',sep=''),col.names=c('日期','大类资产配置超额贡献(%)'))
+  
+  t=t.test(return_compare$contribution,mu=0,alternative='greater',conf.level=0.9)
+  test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+  knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+
+```
+
+统计显示，在中欧潜力价值灵活配置混合这支基金的管理上，每季度平均取得 `r test[1]`% 的配置收益，但是统计意义上不显著。
+
+
+综上，结合仓位控制上的变化以及专项计算的大类资产配置对于收益的贡献。我们不得不说`r manager`，旗下基金管理中，没有表现出统计显著的大类资产配置的能力。他自己论述配置上的功夫时说道，“主要是根据牛熊判断控制仓位调整”。在我们的考察期内，牛熊变换发生了一次，几乎出乎所有人的判断，故而无所作为。
+另一个重要的原因是他在基金产品设计的时候有明显的股票主题倾向（这从基金名称可以看出来），那么潜在的基金客户就是偏好于投资这类主题股票的投资者，配置是基金投资者需要考虑的问题，作为主题基金只需要在该主题范围内为投资者提供尽可能好的风险收益比就行了。从这个意义上说，未显示出来的大类资产配置能力不见得是`r manager`不具备，而是不需要而已。
+
+## 行业配置能力：较好 
+
+既然基金产品的超额收益并非得益于大类资产的配置，那么比如来自与行业配置\footnote{我们使用的是证监会行业分类（一级）标准。}、选股以及择时的能力。需要提前指出的是，这三个能力在逻辑与实践中都不是相互独立的。好的投资标的往往也意味着好的投资时机，而好股票的挖掘与选择自然也带来了相应行业的配置偏好。但是这三种能力又在某种程度上可以区别开来，因为它们毕竟是在投资的不同决策层面和时点上的投资活动。我们认为：
+
+行为 | 动机 | 度量方法
+-----|------|---------
+行业配置|smart beta | $\sum(w_i-w_i^B)(r_i^B-r^B)$
+择股 | 持续的alpha | $\sum w_{i}(r_{i}^F-r_{i}^B)$
+择时 | 动态的alpha | 未解释的差额部分
+
+因为所获得数据精确程度的不同，我们计算的以上三个方面能力对于总超额收益的贡献比例可能是不精确的，读者应该更多的关注其相对值以及相关的统计推论。
+
+
+
+```{r, echo=FALSE,cache=TRUE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=1
+df=industry_contribution(code=fund.codes[i],from=froms[i],to=tos[i])
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+a=aggregate(contribution~yearqtr,df,win_ratio)
+b=aggregate(contribution~yearqtr,df,sum)
+a$total<-b$contribution
+a[,2]=a[,2]*100
+knitr::kable(a,digits=2,caption=paste(fund.names[i],'行业配置能力',sep=''),col.names=c('日期','行业配置成功率%','行业配置贡献超额收益率%'))
+t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+
+```
+
+从统计结果可以看出，`r manager`在`r fund.names[i]`基金的管理上显示了一定的行业配置能力，平均超额表现为`r test[1,1]`%每半年，年化`r ((1+test[1,1]/100)^4-1)*100`%。
+
+
+```{r, echo=FALSE,cache=TRUE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=2
+df=industry_contribution(code=fund.codes[i],from=froms[i],to=tos[i])
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+a=aggregate(contribution~yearqtr,df,win_ratio)
+b=aggregate(contribution~yearqtr,df,sum)
+a$total<-b$contribution
+a[,2]=a[,2]*100
+knitr::kable(a,digits=2,caption=paste(fund.names[i],'行业配置能力',sep=''),col.names=c('日期','行业配置成功率%','行业配置贡献超额收益率%'))
+t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2)
+
+```
+
+从统计结果可以看出，`r manager`在`r fund.names[i]`基金的管理上没有显著的行业配置能力，平均超额表现为`r test[1,1]`%每半年，年化`r ((1+test[1,1]/100)^4-1)*100`%。这可能跟基金运营时间尚短有关系。
+
+
+
+在`r manager`管理基金过程中，表现出一定的行业配置的能力，但是相应的不确定性大。
+
+## 择股能力：较强！
+
+公开渠道获得的持仓数据频率为每半年一次。我们依据此数据分析基金管理人的择股能力。当然，由于更新频率粗糙，读者有理由担心计算精度的问题。不过从另外一个角度看，我们所谓的择股能力是对照于择时能力而言获取相对持续的alpha的能力。这里的相对持续，完全可以根据我们研究的需要而定义。此处，定义半年为一个相对持续的alpha的标准，也是合情合理的。当前受制于数据不完整，此项能力分析最早只能回溯到2013年。
+
+```{r,echo=FALSE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=1
+df=stock_contribution(code=fund.codes[i],from=max(froms[i],'2013-01-01'),to=tos[i])
+
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+if(ncol(df)>0)
+{
+  a=aggregate(industry_return_algo3-bogey_return~report_date,df,win_ratio)
+  b=aggregate(weight_algo3*(industry_return_algo3-bogey_return)~report_date,df,sum)
+  a$total<-b[,2]
+  a[,2]=a[,2]*100
+  
+  print(knitr::kable(a,digits=2,caption=paste(fund.names[i],'择股能力',sep=''),col.names=c('日期','行业择股成功率%','择股贡献超额收益率%')))
+  t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+  test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+  print(knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2))
+}
+```
+
+
+
+从统计结果可以看出，`r manager`在`r fund.names[i]`基金的管理上显示了明显的择股能力——即她能够选择出在未来6个月的投资周期上回报好于对应行业指数表现的股票组合，而且择股能力贡献的平均超额表现高达`r test[1,1]`%每半年,年化`r ((1+test[1,1]/100)^2-1)*100`%。
+
+```{r, echo=FALSE,cache=TRUE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=2
+df=stock_contribution(code=fund.codes[i],from=max(froms[i],'2013-01-01'),to=tos[i])
+
+win_ratio<-function(x)
+{
+  s=sign(x)
+  return(sum(s[s=1])/length(s))
+}
+if(ncol(df)>0)
+{
+  a=aggregate(industry_return_algo3-bogey_return~report_date,df,win_ratio)
+  b=aggregate(weight_algo3*(industry_return_algo3-bogey_return)~report_date,df,sum)
+  a$total<-b[,2]
+  a[,2]=a[,2]*100
+  print(knitr::kable(a,digits=2,caption=paste(fund.names[i],'择股能力',sep=''),col.names=c('日期','行业择股成功率%','择股贡献超额收益率%')))
+  t=t.test(a$total,mu=0,alternative='greater',conf.level=0.9)
+  test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+  print(knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2))
+}
+```
+
+从统计结果可以看出，`r manager`在`r fund.names[i]`基金的管理上显示了明显的择股能力——即她能够选择出在未来6个月的投资周期上回报好于对应行业指数表现的股票组合，而且择股能力贡献的平均超额表现高达`r test[1,1]`%每半年,年化`r ((1+test[1,1]/100)^2-1)*100`%。
+
+
+
+## 择时能力：不追求
+择时能力在本文的设定中包括以下方面：
+
+* 交易周期短于半年的动态alpha机会，如一些短期事件性投资机会、相对明确的业绩反转预期等。
+* 上升通道中的止盈能力
+* 下降通道中的止亏能力
+
+所以择时能力并不总是能够带来正的超额收益，但是它能够确保落袋为安（止盈能力）或者保命再战（止亏能力），对于提高基金的风险收益比（如夏普率）是十分重要的。
+
+```{r, echo=FALSE,cache=TRUE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=1
+df=timing_contribution(fund.codes[i],from=max(froms[i],'2013-01-01'),to=tos[i])
+print(knitr::kable(df,digits=2,caption=paste(fund.names[i],'择时能力',sep=''),col.names=c('日期','择时能力贡献超额收益率%')))
+t=t.test(df[,2],mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+print(knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2))
+```
+
+从上表中可以看出，`r manager`在`r fund.names[i]`基金的管理上显示了明显的择时能力，而且择时能力贡献的平均超额表现高达`r test[1,1]`%每半年,年化`r ((1+test[1,1]/100)^2-1)*100`%。但是，也要注意到择时能力的表现十分不稳定，主要贡献来着2015年上半年，这是因为基金创建于2014年底，当时建仓工作没有全部完成，而在2015年上半年进行了大幅度的建仓。我们的判定系统将这种行为判断为择时活动，因而给出了该期超高的择时能力，其实该部分收益当归结为择股能力。若排除这一项，实际上择时能力相当的弱。用他本人的话说“持有期多以年为单位，至少两季度”，在这样的风格下，当然不刻意追求短线获利的机会。
+
+
+```{r, echo=FALSE,cache=TRUE, fig.width=11, message=FALSE, warning=FALSE, render=FALSE,results='asis'}
+i=2
+df=timing_contribution(fund.codes[i],from=max(froms[i],'2013-01-01'),to=tos[i])
+print(knitr::kable(df,digits=2,caption=paste(fund.names[i],'择时能力',sep=''),col.names=c('日期','择时能力贡献超额收益率%')))
+t=t.test(df[,2],mu=0,alternative='greater',conf.level=0.9)
+test<-data.frame(ave=as.numeric(t$estimate),confidence=sprintf('$[%.2f,\\infty)$',t$conf.int[1]))
+print(knitr::kable(test,col.names=c('平均超额贡献%','90%置信区间'),digits=2))
+```
+
+从上表中可以看出，`r manager`在`r fund.names[i]`基金的管理上显示了明显的择时能力，而且择时能力贡献的平均超额表现为`r test[1,1]`%每半年,年化`r ((1+test[1,1]/100)^2-1)*100`%。同样的道理，该基金创建与2015年末，所以2016上半年的择时能力中有很大一部分应该归属于择股能力。尽管如此，他依旧在其后的表现中展现出了一定的择时能力。当然，考虑到圆信基金的组织架构，`r manager`的时间安排，我们更倾向与将该部分的表现归功于另外以为共同管理该基金的范妍女士。
+
+
+
+
+综上，我们认为`r manager`作为一名偏好长期投资的投资者和圆信基金的投资负责人，没有动机与时间去关注短时alpha机会的。
+
+
+
+
+# 投资方法体系
+
+## 股市中的绝对收益
+
+利用动态投资策略，在股市中获取绝对收益：
+
+* 用1-3个月的时间，低于20%的股票仓位，利用无风险收益和股票市场中确定性比较的机会累计初始安全垫
+
+* 当净值$\geq 1.05$，增加仓位，同时提高安全垫的标准（即提高止损的标准，如净值1.03）
+  
+如此，实现了累计收益阶梯式的增长并有效的控制回撤，虽然不见得获得了最大的投资收益，但是收益风险比一定是靓丽的。
+
+## 投资研究方法
+
+\begin{itemize}
+
+\item 战略判断（实际是中观分析），包括：
+\begin{enumerate}
+\item 行业周期：判断行业是否景气
+\item 企业家精神：判断核心管理者的素质和团队战略管理方面的质量
+\item 当前赛道的判断：长期的毛利水平，是否适应新的发展等
+\end{enumerate}
+\item 核心股票池跟踪（100个左右），要求
+\begin{enumerate}
+\item 持续的可预见的盈利增长
+\item 拥有完整的数据链以支持研究判断
+\item 月报、季报细致比较，动态跟踪风险收益比。
+\end{enumerate}
+\end{itemize}
+
+# 评价
+`r manager`是资深的投资人。他具备数学本科的背景，工作经历上提供了完整的管理能力、资产配置能力与资管能力的训练，同时形成了一个强大的朋友圈，这些都成为他投资上不可或缺的资源。我们基于公开信息，进行深度的科学分析，结合与其面对面的交流，做出如下评判：
+
+1. `r manager`有偏好长期价值，但是同时能够驾驭多种不同风格的基金管理者；
+2. `r manager`有着成熟的行业分析方法和经验，能够从行业轮动中获取配置的机会，因而具备较好的行业配置的能力；
+3. `r manager`具备了足够的经历去理解分析企业管理层，从而能够结合行业分析选取出好的投资标的，因此具备较强的择股能力；
+4. 当前的工作需要并没有挑战他的大类资产配置能力，我们只能说，`r manager`没有展示出大类资产配置的能力。
+
+因此，`r manager`是有着丰富的经历和阅历，具备深度行业分析与配置能力，较强的择股能力的基金管理者；同时他也具备强大的气质和管理经验，是一位成熟的基金经理的经理。

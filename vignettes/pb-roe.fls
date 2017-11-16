@@ -3,7 +3,7 @@ INPUT /etc/texmf/web2c/texmf.cnf
 INPUT /usr/share/texmf/web2c/texmf.cnf
 INPUT /usr/share/texlive/texmf-dist/web2c/texmf.cnf
 INPUT /var/lib/texmf/web2c/xetex/xelatex.fmt
-INPUT /tmp/RtmplGPJIe/preview-cc958eaa431.dir/pb-roe.tex
+INPUT /tmp/Rtmp4VnQie/preview-340e13ad35b5.dir/pb-roe.tex
 OUTPUT pb-roe.log
 INPUT /usr/share/texlive/texmf-dist/tex/latex/tufte-latex/tufte-book.cls
 INPUT /usr/share/texlive/texmf-dist/tex/latex/tufte-latex/tufte-book.cls
@@ -295,9 +295,9 @@ INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm7.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/cm/cmr7.tfm
 INPUT /usr/share/texlive/texmf-dist/tex/latex/euenc/eu1lmtt.fd
 INPUT /usr/share/texlive/texmf-dist/tex/latex/euenc/eu1lmtt.fd
-INPUT /tmp/RtmplGPJIe/preview-cc958eaa431.dir/pb-roe_files/figure-latex/fig-margin-1.pdf
-INPUT /tmp/RtmplGPJIe/preview-cc958eaa431.dir/pb-roe_files/figure-latex/fig-fullwidth-1.pdf
-INPUT /tmp/RtmplGPJIe/preview-cc958eaa431.dir/pb-roe_files/figure-latex/fig-main-1.pdf
+INPUT /tmp/Rtmp4VnQie/preview-340e13ad35b5.dir/pb-roe_files/figure-latex/fig-margin-1.pdf
+INPUT /tmp/Rtmp4VnQie/preview-340e13ad35b5.dir/pb-roe_files/figure-latex/fig-fullwidth-1.pdf
+INPUT /tmp/Rtmp4VnQie/preview-340e13ad35b5.dir/pb-roe_files/figure-latex/fig-main-1.pdf
 INPUT pb-roe.bbl
 INPUT pb-roe.bbl
 INPUT pb-roe.aux

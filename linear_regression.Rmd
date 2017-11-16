@@ -1,0 +1,359 @@
+---
+title: "Linear Models"
+author: "Hai Lan"
+date: '2017-09-01'
+output:
+  rmdformats::html_clean:
+    highlight: kate
+  rticles::fund_analysis:
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+documentclass: ctexart
+layout: post
+comments: yes
+tags:
+- 投资
+- R
+categories: data
+use_math: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 简单线性模型
+
+统计当中的线性模型在实际中有很多的应用。比如基金分析中有一个大的方向是基金风格分析（fund style analysis)。所谓基金风格，其实指的是基金管理人在选择投资对象时机中显示除来的对于资产类别、投资策略与时点的偏好。比如，是否偏重成长股，是否暴露比较多的系统性风险等等。很自然基金风格分析基本有两大类方法，基于持仓数据的或者基于净值变化的。基于持仓数据很好理解，基金的风格一定是通过持有的投资对象表现出来的，如果持有较大权重的成长股，那么该基金的风格就可能是成长型的。困难在两个方面：一是不是说每个资产的属性是单调的，一个股票可能是小盘的（从规模上）、高PB的（从估值上）和成长的（从增长性上）复合，甚至可能是成长和价值（看起来两个比较容易冲突的属性）的结合。另外一个困难是，持仓数据比较难以全面获得，或者获得的数据精确度不够。比如私募基金持仓数据，往往只对其投资者部分开放（前十持仓）；公募基金持仓数据则每半年更新一次，而很多公募基金的交易频率快于持仓数据更新频率。假设数据来源以及精度不成问题的情况下，那么基金风格分析，则通过分析所持有的每一个投资对象的风格，然后按照投资权重加和的方法来度量。
+\[
+\mbox{Fund Return}_t=\sum_{i}^n w_{i,t} r_{i,t} 
+\]
+其中，$r_{i,t}$为投资对象$i$在$t$时刻的回报率，其满足
+\[
+r_{i,t}=\alpha_i+\sum_j^m\beta_{i,j}F_{j,t}+\epsilon_{i,t}
+\]
+此处$F_{j,t},j=1,\cdots,m$为风格因子$j$在$t$时刻的表现。比如我们可以取规模（大、中、小）和类型（成长、价值）两个维度共6个因子。中国市场上已经有对应这6个因子的指数，指数的涨跌幅，就对应了公式中的$F_{j,t}$。
+上式对应的模型，就是一个最为简单的线性模型。统计学上$F_j$又称为自变量，$r_i$为因变量，$\epsilon_{i,t}$为残差项。我们建立模型的目标，总是使得自变量与因变量之间的解释性越强越好。就我们这个模型来说，就是要使得残差项越小越好。第一要紧的，就是残差项目的均值要为0，这通过选择适当的$\alpha_i$可以实现，紧接着的就是残差项的高阶动量（moment）。如果残差项服从正态分布，那么我们可以只要求最小化
+\[
+E(\epsilon_{i,t}^2)
+\]
+如果，该残差项是随时间无关的，那么我们的目标进一步为：
+\[
+E(\epsilon_i^2)\approx \frac{1}{T}[\bar{r}_i-\bar{F}\bar{\beta}_i]^t[\bar{r}_i-\bar{F}\bar{\beta}_i]
+\]
+此处
+\begin{eqnarray*}
+\bar{r}_i&=&(r_{i,1},\cdots,r_{i,T})^t \\
+\bar{\beta}_i&=&(\alpha_i,\beta_1,\cdots,\beta_m)^t \\
+\bar{F}&=&\mbox{行向量}\bar{F}_t,t=1\cdots,T\mbox{组成的矩阵}\\
+\bar{F}_t&=&(1,F_{1,t},\cdots,F_{m,t})
+\end{eqnarray*}
+求解该问题，就是典型的二阶优化。由于是无约束的优化问题，取得最优值的参数$\bar{\beta}_i$只需要满足
+\[
+\bar{\beta}_i =[\bar{F}^t\bar{F}]^{-1}\bar{F}^t  \bar{r}_i
+\]
+这个结果依赖于矩阵$\bar{F}^t\bar{F}$可逆。
+
+在残差项不是正态分布的情况，大多数时候最小化一个方差，也不算太坏。当然那些来自于正态分布的漂亮性质就不会再有了。
+以下，我们用智度股份（000676）为例，看看该股收益偏向什么类型的风格。
+```{r, warning=FALSE}
+library(CAsset)
+library(dlm)
+init()
+data("stocks")
+data("stock_indexes")
+data("stocks_weekly")
+r=stocks_weekly[,'智度股份']
+data("stock_index_weekly")
+F=stock_index_weekly[,1:6]
+F=merge(r,F,all=FALSE,drop=TRUE)
+F=F[rowSums(is.na(F))==0,]
+data=as.data.frame(F)
+colnames(data)<-c('r','f1','f2','f3','f4','f5','f6')
+lm(r~1+f1+f2+f3+f4+f5+f6,data)
+r=F[,1]
+F[,1]=1
+solve(t(F)%*%F)%*%t(F)%*%r
+```
+你可以很清楚的看到，使用lm函数和我们自己按照上边的公式计算的结果是一致的。
+那么智度股份是什么属性的股票呢？通常直接比较因子的系数是没有价值的，因为系数必然受到因子的计量单位影响。不过这里由于都是同一市场的股票指数的变化率，因此对照系数的大小正负，可以看出一些有用的信息来。上边的计算中，我们得到的系数有正有负。系数为正，表明跟该因子正相关，反之，负相关。我们选用的6个因子，实际上相互之间不是独立的（大多数实际问题都是如此），这种因子之间的相关性，带来两个问题：一是参数估计的误差放大，极端的例子是，如果因子1就是因子2，那么它们两的参数和是有意义的，但是各自的系数实际上可以取任意值，只要保持和一定；另一个问题是独立的看待某个因子的系数可能不正确。比如智度股份，其小盘的特征很明，最大的系数也是小盘成长，可是小盘价值的系数差得不远。再则所有的成长系数和远远小于所有的价值系数和。究竟智度股份是小盘成长，还是小盘价值，就需要更进一步的分析了。这里的简单的线性模型没有办法说的很清楚了。在准备了足够的知识后，我们会回到这个问题。
+
+## 非正态分布模型
+
+残差项目如果不是正态分布，则我们以上使用的最新二乘法以及后续对于系数估计的t检验和F检验都没有了理论基础。比如因变量是一个Bernoulli分布（取0或1的二值分布）。此时坚持使用线性模型，多少有些不合时宜。毕竟线性模型取值范围可以是$-\infty$到$+\infty$。不过作为一个尝试，我们看看用一个线性模型来描述Bernoulli分布的概率应该是可以的。
+\[
+p_i = \alpha+\beta x_i\ \ \ \  i=1,\cdots,T 
+\]
+因变量$y_i,i=1,\cdots,T$，自变量$x_i,i=1,\cdots,T$，这可以看做系统可以被观察到的输出和输入。模型中$\alpha,\beta$是需要估计的系数。金融中有很多相关的问题，比如我们想要根据小盘成长股指数昨日的表现来预测今日智度股份的涨跌。
+
+如何估计模型参数呢？我们可以选择参数$\alpha$和$\beta$使得输入为$x_i,i=1,\cdots,T$时观察到输出$y_i,i=1,\cdots,T$的概率最大化。当然，只是一个最大似然估计问题。其对数似然率为：
+\[
+l(y_i|\alpha,\beta,x_i)=\sum_{i}^T [y_ilog(p_i)+(1-y_i)log(1-p_i)  ]
+\]
+在无约束情况下，其最大值在一阶导数为零时取得。所以
+\[
+\frac{\partial l(\alpha,\beta)}{\partial \alpha}=\sum_i^T[\frac{y_i}{p_i}-\frac{1-y_i}{1-p_i}] \\
+\frac{\partial l(\alpha,\beta)}{\partial \beta}=\sum_i^T[\frac{y_i}{p_i}-\frac{1-y_i}{1-p_i}]x_i
+\]
+我们利用R，实现这一想法。
+```{r, warning=FALSE}
+y=stocks_weekly[,'智度股份']
+x=lag(stock_index_weekly[,4])
+F=merge(x,y,all=FALSE,drop=TRUE)
+F=F[rowSums(is.na(F))==0,]
+F[,1]=F[,1]>0
+data=as.data.frame(F)
+
+colnames(data)<-c('y','x')
+rm(x)
+rm(y)
+attach(data)
+summary(lm(y~1+x,data))
+
+ber<-glm(y~x,family=quasi(variance="mu(1-mu)"),start=c(0.1,0))
+summary(ber,dispersion=1)
+```
+第一个使用最小二乘的结果是不可靠的，第二个回归的结果稍好一些。但是也好不到那里去，看看下图。
+```{r}
+plot(as.numeric(x),as.numeric(y))
+points(as.numeric(x),0.53432+0.76032*x,col='red')
+```
+
+首先是，这两组数据本就不太支持我们的模型。其次，模型描述的发生概率，不是因变量自身。
+
+一个可能的改进是把线性函数$(-\infty,+\infty)$的取值空间映射到概率空间$[0,1]$上。这样做，只需要寻找一个满足一定性质的函数就可以，具体来说：
+
+1. 光滑
+2. 单调
+
+这是两个比较好的性质。合在一起可以保证函数的逆函数也很漂亮，这是重要的。
+
+比如：
+\[
+h_i = \alpha + \beta x_i \\
+g(p_i)=h_i
+\]
+其中$g(\cdot)$称为连接函数——将因变量与线性模型的输出连接起来的函数——可能的表达式为：
+\[
+h_i=g(p_i)=\log(\frac{p_i}{1-p_i})
+\]
+该函数的逆函数为：
+\[
+p_i = \frac{1}{1+e^{-h_i}}
+\]
+我们依旧可以使用最大似然估计来建立这个回归模型。以下的R代码使用了glm函数来实现这一过程。
+
+
+```{r}
+ber.logit<-glm(y~x,family=binomial())
+summary(ber.logit)
+```
+
+这样的连接函数多种多样，除了已经见到的（称为logit函数），我们还有逆正太累计分布函数，又称为probit函数。
+
+```{r}
+ber.probit<-glm(y~x,family=binomial(link='probit'))
+summary(ber.probit)
+```
+
+我们总的来比较一下三个模型的结果
+```{r}
+plot(x,y)
+curve(predict(ber, data.frame(x = x)),add=TRUE,lty=1)
+curve(predict(ber.logit, data.frame(x = x), type = "response"),add=TRUE,lty=2)
+curve(predict(ber.probit, data.frame(x = x), type = "response"),add=TRUE,lty=3)
+```
+
+## 动态线性模型
+
+通常动态线性模型包括4个重要的可变参数$\{F_t,G_t,V_t,W_t\}$：
+
+* 观测约束： $Y_t = F_t \theta_t + v_t$，其中$v_t \sim N(0,V_t)$
+* 系统约束： $\theta_t = G_t \theta_{t-1} + \omega_t$，其中$\omega_t\sim N(0,W_t)$
+* 先验概率： $\theta_0\sim N(m_0,C_0)$
+
+其中，误差序列$v_t$与系统游动序列$\omega_t$是相互独立的，其各自也是独立的随机序列。系统如果存在任何的自相关性，都应该被$F_t$与$G_t$所蕴含的线性关系表达。当$G_t=G$时，系统约束显示出了了“差分不变”+随机噪声的特性，是介于简单线性模型和复杂线性模型之间的桥梁，往往成为我们有力的工具之一。
+
+在文件pmi.csv中记录了中国自2008年以来每月报告的采购经理人指数，数据来自于中国物流与采购联合会网站。对于该数据的分析以及预测，使用一个模型参数为$\{1,1,V,W_t \}$的动态线性模型是可以的。数学上，
+
+* 观测约束：$PMI_t = \theta_t + v_t$，其中$v_t\sim N(0,V_t)$
+* 系统约束：$\theta_t = \theta_{t-1} + w$，其中$w\sim N(0,W)$
+
+可见$\theta_t$实际是PMI指数在t时刻的均值，在短期内我们认为该均值近似不变的，而长期则没有明确方向性的预测。因此，我们使用了一个随机游走过程来对$\theta_t$进行建模。当然不同的时期PMI的波动性不一样，这可能更多的来自于受调查对象的主观情绪，所以我们保持了$V_t$的时变性。
+```{r,warning=FALSE}
+library(purrr)
+library(dplyr)
+p=read.csv('./data/pmi.csv',header=FALSE)
+ad.year<-function(x){as.yearmon(paste(substr(as.character(x),1,4),substr(as.character(x),6,7),sep='-'))}
+p$V1<-unlist(p$V1 %>% map(ad.year))
+p=arrange(p,V1)
+myPMI<-function(b)
+{
+  m<-dlmModReg(p$V2,FALSE,dW=b[1]^2,m0=50)
+  m$JFF<-matrix(0,nr=1,nc=1)
+  return(m)
+}
+fit<-dlmMLE(p$V2,parm=0.1,build=myPMI)
+mod<-myPMI(fit$par)
+filted<-dlmFilter(p$V2,mod)
+plot(cbind(p$V1,filted$m[-1]),col=c('black','red'),xlab='日期',ylab='制造业PMI')
+```
+
+这显然出现了过分拟合的情况，也就是对于PMI实际上不需要那么复杂的模型。模型的自由度太多，我们考虑降低维度，将$V_t$确定为$V$。
+```{r,warning=FALSE}
+myPMI2<-function(b)
+{
+  m<-dlmModReg(p$V2,FALSE,dW=b[1]^2,dV=b[2]^2,m0=50)
+  m$JFF<-matrix(0,nr=1,nc=1)
+  return(m)
+}
+fit<-dlmMLE(p$V2,parm=c(0.1,0.1),build=myPMI2)
+mod<-myPMI(fit$par)
+filted<-dlmFilter(p$V2,mod)
+plot(cbind(p$V1,filted$m[-1]),col=c('black','red'),xlab='日期',ylab='制造业PMI')
+```
+总感觉使用动态线性模型用来拟合PMI的数据有过分拟合的嫌疑。
+一般意义上，当观测量$Y_t$被如下表达的时候
+\[
+Y_t=\theta_t + v_t
+\]
+$\theta_t$是该序列在t时刻的水平级（level），$v_t$为观测误差。水平级（level)的时间变化，可以描述为
+\[
+\theta_t = \theta_{t-1}+\omega_t\ \ \ \ \ \omega_t\sim N(0,W_t)
+\]
+是一个随机走过程，$\omega_t$被成为系统演化噪声。这样的随机走过程描述的水平级（level）具备局部稳定性。这种类型的动态模型对于短期预测是有用的。因为它的预测函数$f_t(\cdot)$是一个衡量，表达如下
+\[
+f_t(k)=E(Y_{t+k}|D_t)=E(\theta_t|D_t)=m_t
+\]
+其中，$D_t$代表t时刻时存在的所有信息，$m_t$是$\theta_t$的后验的条件均值。也是因为这种局部稳定性，所以我们一般要求观测噪声$V_t$要显著的大于系统演化噪声$W_t$。
+
+```{r}
+require(dlm)
+require(reshape2)
+require(ggplot2)
+set.seed(12345)
+v=rnorm(100)
+w=0.05*rnorm(100)
+bigw=10*w
+bigmu=rep(0,100)
+mu0=1
+mu=rep(0,100)
+y=rep(0,100)
+bigy=rep(0,100)
+mu[1]=mu0
+bigmu[1]=mu0
+for(i in 1:99)
+{
+  mu[i]=mu[i]+w[i]
+  bigmu[i]=bigmu[i]+bigw[i]
+  y[i]=mu[i]+v[i]
+  bigy[i]=bigmu[i]+v[i]
+  mu[i+1]=mu[i]
+  bigmu[i+1]=bigmu[i]
+}
+mu[100]=mu[100]+w[100]
+bigmu[100]=bigmu[100]+bigw[100]
+y[100]=mu[100]+v[100]
+bigy[100]=bigmu[100]+v[100]
+data=data.frame(level=mu,data=y)
+data$date=seq(as.Date('2010-01-01'),by='day',length.out=100)
+d=melt(data,id.vars='date')
+ggplot(d,aes(x=date,y=value,colour=variable,group=variable))+geom_line()+ggtitle('Simulated GLM with W/V=0.05')
+data=data.frame(level=bigmu,data=bigy)
+data$date=seq(as.Date('2010-01-01'),by='day',length.out=100)
+d=melt(data,id.vars='date')
+ggplot(d,aes(x=date,y=value,colour=variable,group=variable))+geom_line()+ggtitle('Simulated GLM with W/V=0.5')
+```
+
+显然当$\frac{W}{V}=0.5$，图形显示，我们建模的假设——局部稳定——并不满足了。此时使用这个模型进行预测不会有什么稳妥的结果。
+
+关于以上的动态线性模型，有着如下的结论：
+
+1. 系统状态$\theta_{t-1}$的后验概率： $(\theta_{t-1}|D_{t-1})\sim N(m_{t-1},C_{t-1})$
+2. 系统状态$\theta_{t}$的先验概率：  $(\theta_t|D_{t-1})\sim N(m_{t-1},R_t)$，其中$R_t = C_{t-1}+W_t$
+3. 1步预测： $(Y_t|D_{t-1})\sim N(f_t,Q_t)$，其中$f_t = m_{t-1}$,$Q_t=R_t + V_t$
+4. 系统状态$\theta_t$的后验概率： $(\theta_t|D_t)\sim N(m_t,C_t)$，其中$m_t = m_{t-1} + A_t e_t$,$C_t = A_tV_t$,$A_t = R_t/Q_t$以及$e_t=Y_t-f_t$
+
+前三条性质都属于平常的贝叶斯概率的东西，第四条性质跟前三条形成了递归的关系。
+\[
+(Y_t|\theta_t,D_{t-1})\sim N(\theta_t,V_t) \\
+(\theta_t|D_{t-1})\sim N(m_{t-1},R_t)
+\]
+并且，$D_t = \{ Y_t,D_{t-1}\}$，所以
+\[
+p(y_t|\theta_t,D_{t-1})=\frac{p(y_t,\theta_t,D_{t-1})}{p(\theta_t,D_{t-1})}=\frac{p(\theta_t,D_{t})}{p(D_{t-1})p(\theta_t|D_{t-1})}=\frac{p(\theta_t|D_t)p(D_t)}{p(D_{t-1})p(\theta_t|D_{t-1})}
+\]
+可得
+\[
+p(\theta_t|D_t)=\frac{p(\theta_t|D_{t-1})p(y_t|\theta_t,D_{t-1})}{p(D_t)/p(D_{t-1})}=\frac{p(\theta_t|D_{t-1})p(y_t|\theta_t,D_{t-1})}{p(y_t|D_{t-1})}
+\]
+只关注跟$\theta_t$相关的项目，因此
+\[
+p(\theta_t|D_t)\propto p(\theta_t|D_{t-1})p(y_t|\theta_t,D_{t-1})\propto \exp[-(\theta_t-m_{t-1})^2/(2R_t) - (y_t-\theta_t)^2/(2V_t)]
+\]
+进一步，
+\begin{eqnarray*}
+2\ln(p(\theta_t|D_t))&=&k_1 -(\theta_t - m_{t-1})^2R_t^{-1}-(y_t-\theta_t)^2V_t^{-1} \\
+                     &=&k_2 -(R_t^{-1}+V_t^{-1})\theta_t^2+2(R_t^{-1}m_{t-1}+V_t^{-1}y_t)\theta_t \\
+                     &=&k_3 -(\theta_t-m_t)^2C_t^{-1}
+\end{eqnarray*}
+其中
+\begin{eqnarray*}
+C_t &=& 1/[R_t^{-1}+V_t^{-1}]=R_tV_t/Q_t = A_tV_t \\
+m_t &=& (R_t^{-1}m_{t-1}+y_tV_t^{-1})C_t = m_{t-1}A_tV_t/R_t+A_ty_t=m_{t-1} +A_t(y_t-m_{t-1}) =m_{t-1}+A_te_t=A_ty_t + (1-A_t)m_{t-1}
+\end{eqnarray*}
+显然，其中参数的表达为：
+\begin{eqnarray*}
+Q_t &=& R_t + V_t \\
+R_t &=& C_{t-1} + W_t \\
+A_t &=& \frac{R_t}{Q_t}=\frac{R_t}{R_t + V_t}
+\end{eqnarray*}
+
+那么看看，稍微复杂一点的动态CAPM模型。
+\[
+  r_{i,t} - r_{f,t} = \alpha_{i,t} + \beta_{i,t} (r_{m,t}-r_{f,t})+\epsilon_{i,t}
+\]
+
+```{r,warning=FALSE}
+require(dlm)
+require(reshape2)
+require(ggplot2)
+hs300=getReturnFromDB('000300',from='2000-01-06',frequency='weekly')
+r_f=getRiskfree(from='2005-04-01',frequency='weekly')/52/100
+y=stocks_weekly[,'智度股份']
+x=hs300-r_f
+y=y-r_f
+F=merge(x,y,all=FALSE,drop=TRUE)
+F=F[rowSums(is.na(F))==0,]
+data=as.data.frame(F)
+colnames(data)<-c('x','y')
+rm(x)
+rm(y)
+attach(data)
+## faked data
+##x=rnorm(200)
+##y=0.2+4*x+0.1*rnorm(200)
+mymod<-function(b)
+{
+  m<-dlmModReg(x, TRUE, dV = b[1]^2,dW=c(b[2]^2,b[3]^2),
+                          m0 = c(0,1))
+  m$JFF<-matrix(c(0,1),nr=1,nc=2)
+  return(m)
+}
+fit <- dlmMLE(y, parm = c(0.1, 0.01,0.02),
+              build = mymod)
+mod<-mymod(fit$par)
+filted<-dlmFilter(y,mod)
+smooth<-dlmSmooth(y,mod)
+data$f<-filted$f
+data$s<-smooth$s[-1,1]+smooth$s[-1,2]*x
+data$date<-as.Date(rownames(data))
+d=data[,2:5]
+d=melt(d,id.vars='date')
+
+ggplot(d,aes(x=date,y=value,colour=variable,group=variable))+geom_line()
+```
+当然建模的目的是需要考虑的，如果你是为了验证动态CAPM模型的效果，针对观测噪声项目的检验是必要的。比如，均值、独立性、正态性等。此处我们省略。
+
+
